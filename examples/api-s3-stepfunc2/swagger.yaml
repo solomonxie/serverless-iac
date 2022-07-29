@@ -1,0 +1,50 @@
+---
+swagger: "2.0"
+info:
+  version: "2022-04-28T13:51:16Z"
+  title: "my-rest-api"
+host: "abcdefg.execute-api.us-east-1.amazonaws.com"
+basePath: "/prod"
+schemes:
+- "https"
+paths:
+  /upload:
+    put:
+      consumes:
+      - "image/jpeg"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "k"
+        in: "query"
+        required: true
+        type: "string"
+      - in: "body"
+        name: "Empty"
+        required: true
+        schema:
+          $ref: "#/definitions/Empty"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/Empty"
+      x-amazon-apigateway-integration:
+        credentials: "arn:aws:iam::12345:role/my-role-api-gateway-upload-to-s3"
+        httpMethod: "PUT"
+        uri: "arn:aws:apigateway:us-east-1:s3:path/my-poc/upload-from-apigateway/{s3_key}"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.path.s3_key: "method.request.querystring.k"
+        passthroughBehavior: "when_no_match"
+        type: "aws"
+definitions:
+  Empty:
+    type: "object"
+    title: "Empty Schema"
+x-amazon-apigateway-binary-media-types:
+- "*/*"
+- "image/jpeg"
+- "image/png"

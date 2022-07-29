@@ -1,0 +1,35 @@
+serverless-framework-version: "0.3"
+
+info:
+  title: My Application
+  description: Description in Markdown.
+  version: 1.0.0
+  team: myteam
+
+
+services:
+  rest-api:
+    type: AWS::ApiGateway::RestApi
+    name: "demo-rest-api"
+    swagger-path: ./definitions/swagger.yaml
+    throttling:
+      rate-limit: 100
+      burst-limit: 200
+    vpc-endpoint-ids:
+      - ${AWS_LAMBDA_VPC_ID}
+  lambda:
+    arch: x86_64
+    handler: application.services.service3.lambda_handlers.handler
+    layers:
+      - type: python-requirements
+        manifest: ./application/services/service3/requirements.txt
+    upload-ignore:
+      - tests/*
+
+
+resources:
+  lambda:
+    - name: "func-get-status"
+      handler: application.services.service1.lambda_handlers.status_handler
+    - name: "func-get-user"
+      handler: application.services.service2.lambda_handlers.user_handler

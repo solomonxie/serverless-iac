@@ -1,0 +1,36 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "S3 event",
+  "States": {
+    "S3 event": {
+      "Type": "Pass",
+      "Next": "Validation",
+      "Parameters": {
+        "s3_uri.$": "$.detail.bucket.name",
+        "s3_key.$": "$.detail.object.key"
+      }
+    },
+    "Validation": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
+      "Parameters": {
+        "Payload.$": "$",
+        "FunctionName": "arn:aws:lambda:eu-west-1:123123123:function:validator"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true
+    }
+  }
+}

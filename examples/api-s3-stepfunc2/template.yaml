@@ -1,0 +1,36 @@
+serverless-framework-version: "0.3"
+
+info:
+  title: Seamless Serverless Development
+  description: Project for Feaky Friday
+  version: 1.0.0
+
+
+services:
+  rest-api:
+    type: AWS::ApiGateway::RestApi
+    name: "demo-rest-api"
+    swagger-path: ./definitions/swagger.yaml
+    throttling:
+      rate-limit: 100
+      burst-limit: 200
+  lambda:
+    runtime: python3.8
+    arch: x86_64
+    mem: 128
+
+
+resources:
+  schedule:
+    - name: "s3-stepfunc"
+      event-filter-path: ./definitions/s3_event_filter_create.json
+      target-type: "stepfunc"
+      target-name: "abc"
+  stepfunc:
+    - name: "abc"
+      definition-path: ./definitions/state_machine.json
+  lambda:
+    - name: "get-status"
+      handler: lambda_handlers.get_status_handler
+    - name: "get-s3-file-content"
+      handler: lambda_handlers.get_s3_file_content_handler

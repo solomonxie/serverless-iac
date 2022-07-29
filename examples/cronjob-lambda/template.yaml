@@ -1,0 +1,32 @@
+serverless-framework-version: "0.3"
+
+info:
+  title: My Application
+  description: Description in Markdown.
+  version: 1.0.0
+  team: myteam
+
+
+services:
+  eventbridge:
+    type: AWS::EventBridge
+    name: "demo-cronjob-01"
+  lambda:
+    arch: x86_64
+    handler: application.services.service3.lambda_handlers.handler
+    layers:
+      - type: python-requirements
+        manifest: ./application/services/service3/requirements.txt
+    upload-ignore:
+      - tests/*
+
+
+resources:
+  schedule:
+    - name: "demo-schedule-001"
+      cron: "rate(1 minute)"
+      target-type: "lambda"
+      target-name: "func-periodic-run"
+  lambda:
+    - name: "func-periodic-run"
+      runtime: python3.8

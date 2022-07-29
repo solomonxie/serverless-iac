@@ -1,0 +1,34 @@
+serverless-framework-version: "0.2"
+
+info:
+  title: My Serverless
+  description: My Backend in serverles
+  version: 1.0.0
+  team: My
+
+
+services:
+  rest-api:
+    type: AWS::ApiGateway::RestApi
+    name: "my-serverless-poc"
+    swagger-path: ./definitions/swagger_rest_api.yaml
+  lambda:
+    maintainer: "My"
+    runtime: python3.8
+    upload-ignore:
+      - tests/*
+      - .venv/*
+
+
+resources:
+  schedule:
+    - name: "S3-scheduler"
+      event-filter-path: ./definitions/s3_event_filter.json
+      target-type: "stepfunc"
+      target-name: "my-workflow"
+  stepfunc:
+    - name: "my-workflow"
+      definition-path: ./definitions/state_machine.json
+  lambda:
+    - name: "validator"
+      handler: validator.lambda_handler

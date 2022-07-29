@@ -1,0 +1,15 @@
+{
+  "Version": "2008-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "${AWS_ACCOUNT_ID}"
+      },
+      "Action": [
+        "SQS:*"
+      ],
+      "Resource": "arn:aws:sqs:${AWS_REGION}:${AWS_ACCOUNT_ID}:"
+    }
+  ]
+}

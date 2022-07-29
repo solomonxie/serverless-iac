@@ -1,0 +1,46 @@
+swagger: "2.0"
+
+info:
+  title: ${APPLICATION_NAME}
+  description: Description in Markdown.
+  version: 1.0.0
+
+paths:
+  # REST API
+  /status:
+    get:
+      summary: status check
+      x-lambda-name: "func-get-status"
+      operationId: func-get-status
+      responses:
+        "200":
+          description: OK
+  /user:
+    get:
+      summary: Returns a user by ID.
+      x-api-authorizer:
+        type: AWS_IAM
+      x-lambda-name: "func-get-user"
+      operationId: func-get-user
+      parameters:
+        - in: query
+          name: user_id
+          required: true
+          type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+
+definitions:
+  User:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+      - id
+      - name
+

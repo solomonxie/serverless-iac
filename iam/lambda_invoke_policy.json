@@ -1,0 +1,7 @@
+{
+  "StatementId": "12345",
+  "Action": "lambda:InvokeFunction",
+  "FunctionName": "arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:${FUNC_NAME}:${stageVariables.stage_name}",
+  "Principal": "apigateway.amazonaws.com",
+  "SourceArn": "arn:aws:execute-api:${AWS_REGION}:${AWS_ACCOUNT_ID}:${GW_API_ID}/*/*${API_ROUTE_KEY}"
+}

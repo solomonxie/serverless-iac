@@ -1,0 +1,21 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "states:DescribeActivity",
+                "states:DescribeExecution",
+                "states:ListExecutions",
+                "states:StartExecution",
+                "states:StopExecution"
+            ],
+            "Resource": [
+                "arn:aws:states:${AWS_REGION}:${AWS_ACCOUNT_ID}:activity:*",
+                "arn:aws:states:${AWS_REGION}:${AWS_ACCOUNT_ID}:execution:prod-green-my-bulk-delivery-stepfunc-bulk_delivery_task:*",
+                "arn:aws:states:${AWS_REGION}:${AWS_ACCOUNT_ID}:stateMachine:prod-green-my-bulk-delivery-stepfunc-bulk_delivery_task"
+            ]
+        }
+    ]
+}

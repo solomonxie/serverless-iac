@@ -1,0 +1,146 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:List*",
+                "tag:GetResources"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:CreatePolicy",
+                "iam:GetPolicy",
+                "iam:GetPolicyVersion"
+            ],
+            "Resource": "arn:aws:iam::${AWS_ACCOUNT_ID}:policy/service-role/AWSLambdaBasicExecutionRole-*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:PassRole"
+            ],
+            "Resource": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/Lambda-General-Execution-Role*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "iam:AttachRolePolicy",
+                "iam:CreateRole",
+                "iam:GetRole"
+            ],
+            "Resource": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/service-role/*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:List*",
+                "lambda:AddPermission",
+                "lambda:CreateAlias",
+                "lambda:CreateFunction",
+                "lambda:DeleteAlias",
+                "lambda:DeleteFunction",
+                "lambda:GetAlias",
+                "lambda:GetFunction",
+                "lambda:GetFunctionCodeSigningConfig",
+                "lambda:GetFunctionConcurrency",
+                "lambda:GetFunctionConfiguration",
+                "lambda:GetFunctionEventInvokeConfig",
+                "lambda:GetPolicy",
+                "lambda:PublishVersion",
+                "lambda:PutFunctionEventInvokeConfig",
+                "lambda:UpdateFunctionCode",
+                "lambda:UpdateFunctionConfiguration"
+            ],
+            "Resource": [
+                "arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:*",
+                "arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:function:*:*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "lambda:List*",
+                "lambda:GetLayerVersion",
+                "lambda:PublishLayerVersion"
+            ],
+            "Resource": [
+                "arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:layer:*",
+                "arn:aws:lambda:${AWS_REGION}:${AWS_ACCOUNT_ID}:layer:*:*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogDelivery"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:DescribeMetricFilters",
+                "logs:DescribeQueryDefinitions",
+                "logs:StartQuery"
+            ],
+            "Resource": [
+                "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/lambda/*:*",
+                "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/gateway/*:*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:List*",
+                "s3:GetAccountPublicAccessBlock"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:PutObject",
+                "s3:GetObject",
+                "s3:List*",
+                "s3:PutObjectAcl",
+                "s3:GetObjectAcl"
+            ],
+            "Resource": [
+                "arn:aws:s3:::${AWS_LAMBDA_BUCKET}",
+                "arn:aws:s3:::${AWS_LAMBDA_BUCKET}/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "apigateway:GET"
+            ],
+            "Resource": [
+                "arn:aws:apigateway:${AWS_REGION}::*",
+                "arn:aws:apigateway:${AWS_REGION}::*/*"
+            ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "apigateway:DELETE",
+                "apigateway:PUT",
+                "apigateway:PATCH",
+                "apigateway:POST"
+            ],
+            "Resource": [
+                "arn:aws:apigateway:${AWS_REGION}::*",
+                "arn:aws:logs:${AWS_REGION}:${AWS_ACCOUNT_ID}:log-group:/aws/gateway/*"
+            ]
+        }
+    ]
+}

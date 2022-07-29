@@ -1,0 +1,37 @@
+serverless-framework-version: "0.2"
+
+info:
+  title: DAB Serverless
+  description: DAB Backend in serverles
+  version: 1.0.0
+  team: DAB
+
+
+services:
+  rest-api:
+    type: AWS::ApiGateway::RestApi
+    name: "dab-serverless-poc"
+    swagger-path: ./definitions/swagger_rest_api.yaml
+  lambda:
+    maintainer: "DAB"
+    runtime: python3.8
+    upload-ignore:
+      - tests/*
+      - .venv/*
+      - .idea/*
+
+
+resources:
+  schedule:
+    - name: "S3-scheduler"
+      event-filter-path: ./definitions/s3_event_filter.json
+      target-type: "stepfunc"
+      target-name: "dab-workflow"
+  stepfunc:
+    - name: "dab-workflow"
+      definition-path: ./definitions/state_machine.json
+  lambda:
+    - name: "validator"
+      handler: application.validator.lambda_handler
+    - name: "tracer"
+      handler: application.tracer.lambda_handler

@@ -1,0 +1,35 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": [
+                "states:DescribeExecution",
+                "states:ListExecutions",
+                "states:GetExecutionHistory",
+                "states:StartExecution",
+                "states:StopExecution",
+                "states:StartSyncExecution"
+            ],
+            "Resource": [
+                "arn:aws:states:us-east-1:123123123:stateMachine:prod-green-my-bulk-delivery-stepfunc-bulk_delivery_task",
+                "arn:aws:states:us-east-1:123123123:execution:prod-green-my-bulk-delivery-stepfunc-bulk_delivery_task:*"
+            ]
+        },
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:GetLogEvents",
+                "logs:FilterLogEvents",
+                "logs:CreateLogGroup",
+                "logs:PutLogEvents"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
