@@ -87,10 +87,10 @@ def get_api_latest_deployment(api_id: str) -> dict:
         return {}
     paginator = rest_client.get_paginator('get_deployments')
     response_iterator = paginator.paginate(restApiId=api_id)
-    deployments = []
+    deployments = {}
     for resp in response_iterator:
-        deployments += resp['items']
-    latest = max(deployments) if deployments else None
+        deployments.update({x['createdDate']: x for x in resp['items']})
+    latest = deployments[max(deployments)] if deployments else {}
     return latest
 
 

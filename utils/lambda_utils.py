@@ -255,7 +255,7 @@ def get_func_latest_version(func_name: str):
             for func in resp['Versions']:
                 fmap[func['Version']] = func
         default_latest = fmap.pop('$LATEST', {})
-        latest = fmap[max([v for v in fmap if is_int(v)])] if len(fmap) else default_latest
+        latest = fmap[str(max([int(v) for v in fmap if is_int(v)]))] if len(fmap) else default_latest
     except Exception:
         print(f'NO LATEST VERSION FOUND FOR [{func_name}]')
     return latest
