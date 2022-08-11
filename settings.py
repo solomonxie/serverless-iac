@@ -16,7 +16,6 @@ DEPLOY_TARGET = os.environ.get('DEPLOY_TARGET')  # THE NAME OF TARGET RESOURCE
 ENABLE_LAMBDA_CONFIG_UPDATE = True if str(os.environ.get('ENABLE_LAMBDA_CONFIG_UPDATE')).lower() == 'true' else False
 
 # AWS
-AWS_IAM_PROFILE_NAME = os.environ.get('AWS_IAM_PROFILE_NAME')
 AWS_REGION = os.environ.get('AWS_REGION')
 AWS_LAMBDA_BUCKET = os.environ.get('AWS_LAMBDA_BUCKET')
 
@@ -29,7 +28,7 @@ DISABLE_API_AUTHORIZER = True if os.environ.get('DISABLE_API_AUTHORIZER') else F
 
 ENABLE_XRAY = True if os.environ.get('ENABLE_XRAY') else False
 
-ses = session.Session(profile_name=AWS_IAM_PROFILE_NAME)
+ses = session.Session()  # FYI: CREDENTIALS SHOULD BE SET IN ENVIRONMENT VARIABLES
 gw_client = ses.client('apigatewayv2')
 rest_client = ses.client('apigateway')
 lambda_client = ses.client('lambda')

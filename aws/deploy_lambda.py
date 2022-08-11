@@ -1,9 +1,9 @@
 import os
 import logging
 
-from utils import iam_utils
-from utils import common_utils
-from utils import lambda_utils
+from aws.utils import iam_utils
+from aws.utils import common_utils
+from aws.utils import lambda_utils
 
 import settings
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class LambdaDeployHelper:
                 if layer['type'] == 'python-requirements':
                     path = os.path.join(self.repo_path, layer['manifest'])
                     sha = lambda_utils.build_python_package_layer(path)
-                    layer['arn'] = lambda_utils.deploy_python_package_layer(sha)
+                    layer['arn'] = lambda_utils.deploy_python_package_layer(sha, specs['runtime'], specs['arch'])
                 elif layer['type'] == 'nodejs-package':
                     pass  # TODO: SUPPORT MORE LANGUAGES
             specs['layer_arn_list'] = [x['arn'] for x in specs.get('layers', [])]
@@ -53,11 +53,6 @@ class LambdaDeployHelper:
                 if settings.ENABLE_LAMBDA_CONFIG_UPDATE:
                     # FIXME: THIS WILL CAUSE FUNCTION PENDING
                     specs['remote'] = lambda_utils.update_function_config(specs)
-            # SET PROVISIONED CONCURRENCY
-            if specs.get('preserve'):
-                lambda_utils.set_function_preservation(specs)
-            else:
-                lambda_utils.remove_function_preservation(specs)
             # UPDATE ALIAS POINTING TO THE LATEST VERSION
             ver = specs.get('latest_version') or specs['remote'].get('Version') or '$LATEST'
             alias_version = specs['alias_info'].get('FunctionVersion')
@@ -67,6 +62,11 @@ class LambdaDeployHelper:
                 specs['alias_info'] = lambda_utils.update_func_alias(full_name, settings.FUNC_ALIAS, ver)
             specs['alias_arn'] = specs['alias_info']['AliasArn']
             specs['latest_version'] = specs['alias_info']['FunctionVersion']
+            # SET PROVISIONED CONCURRENCY
+            if specs.get('preserve'):
+                lambda_utils.set_function_preservation(specs)
+            else:
+                lambda_utils.remove_function_preservation(specs)
             print('=' * 60)
         return
 

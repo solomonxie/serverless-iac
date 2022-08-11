@@ -10,30 +10,30 @@ describe:
 	@python -c "import settings; print(settings.DESCRIPTION)"
 
 deploy-all:
-	python deploy/aws/deploy_lambda.py
-	python deploy/aws/deploy_rest_api.py
-	python deploy/aws/deploy_step_function.py
-	python deploy/aws/deploy_eventbridge.py
-	# python deploy/aws/deploy_http_api.py
+	python aws/deploy_lambda.py
+	python aws/deploy_rest_api.py
+	python aws/deploy_step_function.py
+	python aws/deploy_eventbridge.py
+	# python aws/deploy_http_api.py
 
 
 deploy-lambda:
-	python deploy/aws/deploy_lambda.py
+	python aws/deploy_lambda.py
 
 deploy-http-api:
-	python deploy/aws/deploy_http_api.py
+	python aws/deploy_http_api.py
 
 deploy-rest-api:
-	python deploy/aws/deploy_rest_api.py
+	python aws/deploy_rest_api.py
 
 deploy-event:
-	python deploy/aws/deploy_eventbridge.py
+	python aws/deploy_eventbridge.py
 
 deploy-stepfunc:
-	python deploy/aws/deploy_step_function.py
+	python aws/deploy_step_function.py
 
 destroy:
-	python deploy/aws/destroy_app.py
+	python aws/destroy_app.py
 
 
 docker-build:

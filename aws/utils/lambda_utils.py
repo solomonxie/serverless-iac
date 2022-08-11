@@ -9,11 +9,11 @@ import uuid
 import logging
 
 import settings
-from utils import iam_utils
-from utils.s3_utils import S3Bucket
-from utils.common_utils import is_int
-from utils.common_utils import file_to_sha
-from utils.common_utils import get_app_env_dict
+from aws.utils import iam_utils
+from aws.utils.s3_utils import S3Bucket
+from aws.utils.common_utils import is_int
+from aws.utils.common_utils import file_to_sha
+from aws.utils.common_utils import get_app_env_dict
 
 lambda_client = settings.lambda_client
 s3_client = S3Bucket(settings.AWS_LAMBDA_BUCKET)
@@ -25,6 +25,7 @@ def render_specs(specs: dict) -> dict:
     specs['func_s3_key'] = get_func_s3_key_by_name(specs['full_name'])
     specs['timeout'] = specs.get('timeout') or 60
     specs['arch'] = specs.get('arch') or 'x86_64'
+    specs['runtime'] = specs.get('runtime') or 'python3.8'
     specs['mem'] = specs.get('mem') or 128
     specs['ro-name'] = iam_utils.get_role_full_name(specs['name'])
     specs['role_arn'] = iam_utils.get_role_arn_by_name(specs['ro-name'])
@@ -35,12 +36,12 @@ def render_specs(specs: dict) -> dict:
         specs['subnet-ids'] = str(specs['vpc']['subnet-ids']).split(',')
         specs['sec-group-ids'] = str(specs['vpc']['sec-group-ids']).split(',')
         assert all([specs['subnet-ids'], specs['sec-group-ids']]), 'MISSING SUBNET & SECURITY-GROUP FOR VPC'
-        specs['po-path'] = './iam/iam-policy-lambda-execute-vpc.json'
+        specs['po-path'] = './aws/iam/iam-policy-lambda-execute-vpc.json'
     else:
         specs['subnet-ids'] = []
         specs['sec-group-ids'] = []
         specs['vpc'] = {}
-        specs['po-path'] = './iam/iam-policy-lambda-execute.json'
+        specs['po-path'] = './aws/iam/iam-policy-lambda-execute.json'
     # LIVE FETCH
     specs['remote'] = get_func_info_by_name(specs['full_name'])
     latest = get_func_latest_version(specs['full_name'])
@@ -191,7 +192,7 @@ def build_python_package_layer(path: str) -> str:
     return sha
 
 
-def create_python_package_layer(layer_name: str, layer_s3_key: str):
+def create_python_package_layer(layer_name: str, layer_s3_key: str, runtime: str = None, arch: str = None):
     print(f'CREATING LAYER: [{layer_name}]')
     args = {
         'LayerName': layer_name,  # REQUIRED
@@ -199,8 +200,8 @@ def create_python_package_layer(layer_name: str, layer_s3_key: str):
             'S3Bucket': settings.AWS_LAMBDA_BUCKET,
             'S3Key': layer_s3_key,
         },
-        'CompatibleRuntimes': ['python3.8'],
-        'CompatibleArchitectures': ['x86_64'],
+        'CompatibleRuntimes': [runtime or 'python3.7'],  # FIXME
+        'CompatibleArchitectures': [arch or 'x86_64'],  # FIXME
     }
     resp = lambda_client.publish_layer_version(**args)
     arn = resp['LayerVersionArn']
@@ -217,7 +218,7 @@ def get_latest_layer_by_name(layer_name: str):
     return layer
 
 
-def deploy_python_package_layer(sha: str):
+def deploy_python_package_layer(sha: str, runtime: str = None, arch: str = None):
     layer_name = get_layer_full_name(sha)
     layer_s3_key = get_layer_s3_key_by_sha(sha, 'python')
     layer = get_latest_layer_by_name(layer_name)
@@ -225,7 +226,7 @@ def deploy_python_package_layer(sha: str):
         version_arn = layer['LayerVersionArn']
         print(f'SKIP CREATE LAYER: ALREADY EXISTS: {version_arn}')
     else:
-        version_arn = create_python_package_layer(layer_name, layer_s3_key)
+        version_arn = create_python_package_layer(layer_name, layer_s3_key, runtime, arch)
     return version_arn
 
 

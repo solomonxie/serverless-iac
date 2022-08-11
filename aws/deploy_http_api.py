@@ -2,10 +2,10 @@ import os
 import logging
 
 import settings
-from utils import common_utils
-from utils import lambda_utils
-from utils import http_api_utils
-from utils import cloudwatch_utils
+from aws.utils import common_utils
+from aws.utils import lambda_utils
+from aws.utils import http_api_utils
+from aws.utils import cloudwatch_utils
 
 logger = logging.getLogger(__name__)
 

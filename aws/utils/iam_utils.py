@@ -7,7 +7,7 @@ import logging
 import time
 
 import settings
-from utils import common_utils
+from aws.utils import common_utils
 from settings import iam_client
 
 logger = logging.getLogger(__name__)

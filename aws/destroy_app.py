@@ -1,11 +1,11 @@
 import logging
 
-from utils import iam_utils
-from utils import event_utils
-from utils import common_utils
-from utils import lambda_utils
-from utils import stepfunc_utils
-from utils import rest_api_utils
+from aws.utils import iam_utils
+from aws.utils import event_utils
+from aws.utils import common_utils
+from aws.utils import lambda_utils
+from aws.utils import stepfunc_utils
+from aws.utils import rest_api_utils
 
 logger = logging.getLogger(__name__)
 

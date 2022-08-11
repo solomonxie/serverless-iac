@@ -5,7 +5,7 @@ import json
 import logging
 
 import settings
-from utils import common_utils
+from aws.utils import common_utils
 
 sqs_client = settings.sqs_client
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ def render_specs(specs: dict) -> dict:
     specs['retention'] = specs.get('retention') or 60 * 60 * 24 * 7  # seconds
     specs['receive-wait'] = specs.get('receive-wait') or 0  # seconds
     assert specs['receive-wait'] in range(21)
-    specs['policy-path'] = './iam/iam-policy-sqs-resource.json'
+    specs['policy-path'] = './aws/iam/iam-policy-sqs-resource.json'
     po = common_utils.render_json(specs['policy-path'])
     specs['policy'] = json.dumps(po)  # TODO
     specs['redrive-policy'] = {

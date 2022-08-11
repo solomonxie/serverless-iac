@@ -8,10 +8,10 @@ import hashlib
 import logging
 
 import settings
-from utils import iam_utils
-from utils import lambda_utils
-from utils import common_utils
-from utils import stepfunc_utils
+from aws.utils import iam_utils
+from aws.utils import lambda_utils
+from aws.utils import common_utils
+from aws.utils import stepfunc_utils
 
 event_client = settings.event_client
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ def render_specs(specs: dict) -> dict:
         specs['ro-name'] = iam_utils.get_role_full_name('event-' + specs['name'])
         specs['ro-arn'] = iam_utils.get_role_arn_by_name(specs['ro-name'])
         specs['po-name'] = iam_utils.get_policy_full_name('event-' + specs['name'])
-        specs['po-path'] = './iam/iam-policy-eventbridge-call-stepfunc.json'
+        specs['po-path'] = './aws/iam/iam-policy-eventbridge-call-stepfunc.json'
     else:
         raise NotImplementedError('TARGET TYPE [{}] SUPPORTED'.format(specs.get('target-type')))
     # SKIP DEPLOY

@@ -58,7 +58,7 @@ def parse_swagger_route_map(definitions: dict):
     route_map = {}
     for route, methods in definitions.items():
         for method, info in methods.items():
-            route_key = ' '.join([method.upper(), route])
+            route_key = (method.upper(), route)
             info.update({
                 'method': method.upper(), 'route': route, 'route_key': route_key,
                 'auth': info.get('x-api-authorizer') or {},

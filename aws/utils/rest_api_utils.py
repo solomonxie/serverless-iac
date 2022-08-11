@@ -7,7 +7,7 @@ import yaml
 import logging
 
 import settings
-from utils import common_utils
+from aws.utils import common_utils
 
 rest_client = settings.rest_client
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def render_swagger(path: str, specs: dict) -> dict:
 
 
 def get_api_full_name(name: str):
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-restapi-{name}'
+    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-{name}'
     return full_name
 
 
@@ -204,6 +204,7 @@ def integrate_api_with_stepfunc(*args, **kwargs):
 
 
 def integrate_api_with_s3(api_id: str, route_id: str, method: str, *args, **kwargs):
+    func_arn = ''  # FIXME
     uri = f'arn:aws:apigateway:{settings.AWS_REGION}:lambda:path/2015-03-31/functions/{func_arn}/invocations'
     args = {
         'restApiId': api_id,
