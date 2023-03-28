@@ -34,7 +34,9 @@ def render_specs(specs: dict) -> dict:
 
 
 def get_stepfunc_full_name(short_name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-stepfunc-{short_name}'
+    prefix = f'{settings.STAGE_NAME}-{settings.APPLICATION_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     return full_name
 
 
@@ -117,6 +119,7 @@ def create_stepfunc(specs: dict) -> dict:
         },
         'tags': [
             {'key': 'app_name', 'value': settings.APPLICATION_NAME},
+            {'key': 'stage', 'value': f'{settings.STAGE_NAME}'},
         ],
     }
     if settings.ENABLE_XRAY:

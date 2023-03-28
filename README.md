@@ -116,3 +116,4 @@ TODO:
 - [ ] Render IAM Policy with resource specs
 - [x] Support EventBridge Event Filters
 - [x] Support all API Gateway features: including API directly upload to S3
+- [x] Inject customized environment variables to Lambda

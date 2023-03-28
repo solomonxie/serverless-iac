@@ -1,5 +1,5 @@
-import os
 import logging
+from pathlib import Path
 
 import settings
 from aws.utils import common_utils
@@ -14,10 +14,7 @@ class DeployHelper:
     def __init__(self):
         self.template = common_utils.get_template()
         repo_path = self.template['info']['repo_path']
-        swagger_path = os.path.realpath(os.path.join(
-            os.path.expanduser(repo_path),
-            self.template['services']['http-api']['swagger-path']
-        ))
+        swagger_path = str(Path(repo_path).expanduser() / self.template['services']['http-api']['swagger-path'])
         self.swagger = common_utils.render_yaml(swagger_path)
         self.route_map = common_utils.parse_swagger_route_map(self.swagger['paths'])
         self.api_id = None
@@ -64,6 +61,7 @@ class DeployHelper:
             )
             if not itg_id:
                 itg_id = http_api_utils.create_api_integration(self.api_id, func_arn)
+            route_key = ' '.join(route_key)
             if route_key not in rmap:
                 http_api_utils.create_api_route(self.api_id, method, route, itg_id, specs['auth'])
             else:

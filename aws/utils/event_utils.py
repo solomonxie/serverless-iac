@@ -48,8 +48,10 @@ def render_specs(specs: dict) -> dict:
     return specs
 
 
-def get_rule_full_name(name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-schedule-{name}'
+def get_rule_full_name(short_name: str) -> str:
+    prefix = f'rule-{settings.APPLICATION_NAME}-{settings.STAGE_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     return full_name
 
 
@@ -62,6 +64,7 @@ def set_cron(name: str, schedule: str, bus: str = None, role_arn: str = None) ->
         'Description': f'SCHEDULE:[{name}] FOR APP:[{settings.APPLICATION_NAME}]',
         'Tags': [
             {'Key': 'app_name', 'Value': settings.APPLICATION_NAME},
+            {'Key': 'stage', 'Value': f'{settings.STAGE_NAME}'},
         ],
     }
     if role_arn:
@@ -80,6 +83,7 @@ def set_event_filter(name: str, event_pattern: str, bus: str = None, role_arn: s
         'EventPattern': event_pattern,
         'Tags': [
             {'Key': 'app_name', 'Value': settings.APPLICATION_NAME},
+            {'Key': 'stage', 'Value': f'{settings.STAGE_NAME}'},
         ],
     }
     if role_arn:
@@ -128,6 +132,18 @@ def set_target(rule_name: str, func_arn: str, bus: str = None, role_arn: str = N
         resp = event_client.put_targets(**args)
         resp.pop('ResponseMetadata', None)
     return resp
+
+
+def remove_targets(rule_name: str) -> dict:
+    targets_map = get_targets(rule_name)
+    if targets_map and len(targets_map):
+        target_ids = list([x['Id'] for x in targets_map.values()])
+        response = event_client.remove_targets(Rule=rule_name, Ids=target_ids, Force=True)
+        print(f'DONE: REMOVED TARGETS {target_ids} FROM EVENTBRIDGE RULE [{rule_name}]')
+        return response
+    else:
+        print(f'SKIP: NO TARGETS TO REMOVE OF EVENTBRIDGE RULE {rule_name}')
+    return {}
 
 
 def remove_rule(rule_name: str, bus: str = None):

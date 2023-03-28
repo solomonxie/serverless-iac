@@ -1,17 +1,18 @@
 import os
 import logging
+from pathlib import Path
 from copy import deepcopy
 
 import settings
-from utils import s3_utils
-from utils import iam_utils
-from utils import common_utils
-from utils import event_utils
-from utils import lambda_utils
-from utils import stepfunc_utils
-from utils import http_api_utils
-from utils import rest_api_utils
-from utils import cloudwatch_utils
+from aws.utils import s3_utils
+from aws.utils import iam_utils
+from aws.utils import common_utils
+from aws.utils import event_utils
+from aws.utils import lambda_utils
+from aws.utils import stepfunc_utils
+from aws.utils import http_api_utils
+from aws.utils import rest_api_utils
+from aws.utils import cloudwatch_utils
 
 logger = logging.getLogger(__name__)
 s3_client = s3_utils.S3Bucket(settings.AWS_LAMBDA_BUCKET)
@@ -64,9 +65,7 @@ def prepare_http_api(specs: dict) -> dict:
 
 
 def prepare_rest_api(specs: dict) -> dict:
-    specs['swagger-path'] = os.path.realpath(os.path.join(
-        os.path.expanduser(REPO_PATH), specs['swagger-path']
-    ))
+    specs['swagger-path'] = str(Path(REPO_PATH).expanduser() / specs['swagger-path'])
     specs['swagger'] = common_utils.render_yaml(specs['swagger-path'])
     specs['swagger']['info']['title'] = specs['name']
     specs['name'] = rest_api_utils.get_api_full_name(specs['name'])

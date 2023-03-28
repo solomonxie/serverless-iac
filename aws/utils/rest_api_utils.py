@@ -34,14 +34,16 @@ def render_swagger(path: str, specs: dict) -> dict:
         if info.get('account'):
             raw = raw.replace(info['account'], settings.AWS_ACCOUNT_ID)
     swagger = yaml.safe_load(raw)
-    api_name = get_api_full_name(specs['name'])
-    swagger['info']['title'] = api_name
+    assert ' ' not in specs['name']
+    swagger['info'] = {'title': get_api_full_name(specs['name'].lower())}
     swagger.pop('host', None)
     return swagger
 
 
-def get_api_full_name(name: str):
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-{name}'
+def get_api_full_name(short_name: str):
+    prefix = f'{settings.APPLICATION_NAME}-{settings.STAGE_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     return full_name
 
 
@@ -116,7 +118,10 @@ def create_api(api_name: str, info: dict) -> dict:
             'appliation/gzip',
             'image/*',
         ],
-        'tags': {'app_name': settings.APPLICATION_NAME},
+        'tags': {
+            'app_name': settings.APPLICATION_NAME,
+            'stage': f'{settings.STAGE_NAME}',
+        },
     }
     if settings.ENABLE_VPC:
         args['endpointConfiguration']['vpcEndpointIds'] = str(info['vpc-endpoint-ids']).split(',')
