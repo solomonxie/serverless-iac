@@ -28,12 +28,10 @@ class LambdaDeployHelper:
                 print('SKIP DEPLOYMENT FOR LAMBDA [{}]'.format(specs['name']))
                 continue
             # DEPLOY LAYERS
-            for layer in specs.get('layers') or []:
-                if layer['type'] == 'python-requirements':
-                    path = os.path.join(self.repo_path, layer['manifest'])
-                    sha = lambda_utils.build_python_package_layer(path)
-                    layer['arn'] = lambda_utils.deploy_python_package_layer(sha, specs['runtime'], specs['arch'])
-                elif layer['type'] == 'nodejs-package':
+            for layer_specs in specs.get('layers') or []:
+                if layer_specs['type'] == 'python-requirements':
+                    layer_specs['arn'] = self.deploy_python_package_layer(layer_specs)
+                elif layer_specs['type'] == 'nodejs-package':
                     pass  # TODO: SUPPORT MORE LANGUAGES
             specs['layer_arn_list'] = [x['arn'] for x in specs.get('layers', [])]
             # DEPLOY IAM ROLE/POLICY
@@ -70,9 +68,25 @@ class LambdaDeployHelper:
             print('=' * 60)
         return
 
+    def deploy_python_package_layer(self, specs: dict):
+        lambda_utils.build_layer_with_python_package(specs['manifest_path'], specs['layer_s3_key'])
+        # version_arn = lambda_utils.publish_layer(
+        #     specs['layer_name'], specs['layer_s3_key'], specs['runtime'], specs['arch'],
+        # )
+        layer = lambda_utils.get_latest_layer_by_name(specs['layer_name'])
+        if layer.get('LayerVersionArn'):
+            # TRUST THERE'S NO CHANGE IN EXISTING LAYER
+            version_arn = layer['LayerVersionArn']
+            print(f'WILL NOT CREATE LAYER, ALREADY EXISTS: {version_arn}')
+        else:
+            version_arn = lambda_utils.publish_layer(
+                specs['layer_name'], specs['layer_s3_key'], specs['runtime'], specs['arch'],
+            )
+        return version_arn
+
     def clear(self):
         if not settings.LOCAL_REPO_PATH:
-            assert 0 == os.system(f'rm -rdf {self.repo_path} ||true')
+            assert 0 == os.system(f'yes| rm -rd {self.repo_path} ||true')
         for specs in self.template['resources']['lambda']:
             print('REMOVING LAMBDA OLDER VERSIONS: {}'.format(specs['full_name']))
             lambda_utils.clean_func_old_versions(specs.get('versions') or [])

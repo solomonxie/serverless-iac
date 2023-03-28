@@ -1,9 +1,14 @@
-envfile-local
-
+envfile-*
+envfile_*
+*.zip
+build/*
+.build/*
+python/*
+req.txt
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
 *.py[cod]
+*.pyc
 *$py.class
 
 # C extensions

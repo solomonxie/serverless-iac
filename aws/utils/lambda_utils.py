@@ -6,14 +6,16 @@ REF: https://stackoverflow.com/questions/33825815/how-to-calculate-the-codesha25
 import os
 import json
 import uuid
+import shutil
 import logging
+from pathlib import Path
 
 import settings
 from aws.utils import iam_utils
 from aws.utils.s3_utils import S3Bucket
 from aws.utils.common_utils import is_int
 from aws.utils.common_utils import file_to_sha
-from aws.utils.common_utils import get_app_env_dict
+
 
 lambda_client = settings.lambda_client
 s3_client = S3Bucket(settings.AWS_LAMBDA_BUCKET)
@@ -32,14 +34,22 @@ def render_specs(specs: dict) -> dict:
     specs['po-name'] = iam_utils.get_policy_full_name('lambda-general')
     specs['alias'] = settings.FUNC_ALIAS
     specs['preserve'] = int(specs.get('preserve') or 0)
+    specs['env'] = {
+        'X_STAGE_NAME': settings.STAGE_NAME,
+        'X_APPLICATION_NAME': settings.APPLICATION_NAME,
+        'X_AWS_REGION': settings.AWS_REGION,
+        'X_AWS_ACCOUNT_ID': settings.AWS_ACCOUNT_ID,
+        **(specs.get('env') or {}),
+    }
+    specs['env'] = {str(k): str(v) for k, v in specs['env'].items()}
     if settings.ENABLE_VPC and specs.get('vpc'):
         specs['subnet-ids'] = str(specs['vpc']['subnet-ids']).split(',')
-        specs['sec-group-ids'] = str(specs['vpc']['sec-group-ids']).split(',')
-        assert all([specs['subnet-ids'], specs['sec-group-ids']]), 'MISSING SUBNET & SECURITY-GROUP FOR VPC'
+        specs['secgroup-ids'] = str(specs['vpc']['secgroup-ids']).split(',')
+        assert all([specs['subnet-ids'], specs['secgroup-ids']]), 'MISSING SUBNET & SECURITY-GROUP FOR VPC'
         specs['po-path'] = './aws/iam/iam-policy-lambda-execute-vpc.json'
     else:
         specs['subnet-ids'] = []
-        specs['sec-group-ids'] = []
+        specs['secgroup-ids'] = []
         specs['vpc'] = {}
         specs['po-path'] = './aws/iam/iam-policy-lambda-execute.json'
     # LIVE FETCH
@@ -52,13 +62,23 @@ def render_specs(specs: dict) -> dict:
         settings.DEPLOY_TYPE not in ['full', 'lambda'],
         settings.DEPLOY_TYPE == 'lambda' and settings.DEPLOY_TARGET != specs['name'],
     ]):
-        print('SKIP DEPLOYMENT FOR LAMBDA [{}]'.format(specs['name']))
+        print('WILL NOT DEPLOYMENT FOR LAMBDA [{}]'.format(specs['name']))
         specs['no-deploy'] = True
+    # Layers
+    for layer_specs in specs.get('layers') or []:
+        layer_specs['sha'] = file_to_sha(layer_specs['manifest_path'])
+        layer_specs.update({
+            'runtime': specs.get('runtime'), 'arch': specs.get('arch'),
+            'layer_name': 'layer_{}'.format(layer_specs['sha']),
+            'layer_s3_key': get_layer_s3_key_by_sha(layer_specs['sha'], 'python3.7'),
+        })
     return specs
 
 
 def get_func_full_name(short_name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-lambda-{short_name}'
+    prefix = f'lambda-dca-b2b-{settings.STAGE_NAME}-{settings.APPLICATION_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     return full_name
 
 
@@ -71,8 +91,8 @@ def get_func_arn_by_name(short_name: str) -> str:
 
 
 def get_func_s3_key_by_name(full_name: str) -> str:
-    func_s3_key = 'lambda-function/{}/{}/{}/{}-BUILD-{}.zip'.format(
-        settings.STAGE_NAME, settings.STAGE_SUBNAME, settings.APPLICATION_NAME,
+    func_s3_key = 'lambda-function/{}/{}/{}-BUILD-{}.zip'.format(
+        settings.STAGE_NAME, settings.APPLICATION_NAME,
         full_name, settings.BUILD_NO,
     )
     return func_s3_key
@@ -162,37 +182,42 @@ def remove_lambda_invoke_policy(func_arn, po_id):
     return resp
 
 
-def build_python_package_layer(path: str) -> str:
-    sha = file_to_sha(os.path.realpath(os.path.expanduser(path)))
-    layer_s3_key = get_layer_s3_key_by_sha(sha, 'python')
+def build_layer_with_python_package(manifest_path: str, layer_s3_key: str) -> str:
+    print('BUILDING LAYER...')
     if s3_client.exists(layer_s3_key):
-        print('SKIP UPLOAD: LAYER ALREADY EXISTS ON S3')
-        return sha
-    # opts = [
-    #     'docker run --rm -v',
-    #     '{}:/var/task'.format(os.getcwd()),
-    #     '"public.ecr.aws/sam/build-python3.8"',
-    #     '/bin/sh -c',
-    #     '"pip install -r requirements_abc_service.txt -t python/lib/python3.8/site-packages/; exit"',
-    # ]
-    # cmd = ' '.join(opts)
-    assert 0 == os.system('rm -rdf {tmp_path} python ||true')
-    print('BUILDING PACKAGES...')
-    cmd = f'pip install -r {path} --compile --prefer-binary -t python/lib/python3.8/site-packages/'
-    assert 0 == os.system(cmd)
-    print('DONE: BUILD LAYER')
-    tmp_path = '/tmp/layer_{}.zip'.format(uuid.uuid4().hex)
-    assert 0 == os.system(f'zip -r {tmp_path} python')
-    assert 0 == os.system(f'zip -sf {tmp_path}; du -sh {tmp_path}')
-    assert 0 == os.system('rm -rdf python ||true')
-    print('DONE: ZIPPED LAYER')
+        print('WILL NOT UPLOAD, LAYER ALREADY EXISTS ON S3')
+        return 0
+    shutil.rmtree('./python/', ignore_errors=True)
+    shutil.copyfile(manifest_path, './req.txt')
+    # if os.system('podman info') == 0:
+    #     cmd = (
+    #         'podman run --rm -v "$(pwd)/":/var/task/ "public.ecr.aws/sam/build-python3.7" '
+    #         '/bin/sh -c "pip install -r /var/task/req.txt -t python/; exit"'
+    #     )
+    if os.system('docker info') == 0:
+        cmd = (
+            'docker run --rm -v "$(pwd)/":/var/task/ "public.ecr.aws/sam/build-python3.7" '
+            '/bin/sh -c "pip install -r /var/task/req.txt -t python/; exit"'
+        )
+    else:
+        cmd = f'python -m pip install -r {manifest_path} --compile --prefer-binary -t python/'
+    print(cmd)
+    assert os.system(cmd) == 0
+    print('INSTALLED PACKAGES TO LOCAL, NOW ZIPPING...')
+    tmp_path = '/tmp/layer_{}'.format(Path(layer_s3_key).name)
+    assert os.system(f'zip -FSrq {tmp_path} python') == 0
+    assert os.system(f'zip -sfq {tmp_path} && du -sh {tmp_path}') == 0
+    fsize = '{:.2f}'.format(os.stat(tmp_path).st_size / 1024 / 1024)
+    print(f'ZIPPED LAYER, NOW UPLOADING... [{fsize}MB]')
     s3_client.upload_file(tmp_path, layer_s3_key)
     assert s3_client.exists(layer_s3_key), f'FAILED TO UPLOAD: {tmp_path}'
+    shutil.rmtree('./req.txt', ignore_errors=True)
+    shutil.rmtree('./python/', ignore_errors=True)
     print('DONE: UPLOADED LAYER')
-    return sha
+    return fsize
 
 
-def create_python_package_layer(layer_name: str, layer_s3_key: str, runtime: str = None, arch: str = None):
+def publish_layer(layer_name: str, layer_s3_key: str, runtime: str = None, arch: str = None):
     print(f'CREATING LAYER: [{layer_name}]')
     args = {
         'LayerName': layer_name,  # REQUIRED
@@ -216,18 +241,6 @@ def get_latest_layer_by_name(layer_name: str):
     ver = versions[-1] if bool(versions) else None
     layer = lambda_client.get_layer_version_by_arn(Arn=f'{arn}:{ver}') if ver else {}
     return layer
-
-
-def deploy_python_package_layer(sha: str, runtime: str = None, arch: str = None):
-    layer_name = get_layer_full_name(sha)
-    layer_s3_key = get_layer_s3_key_by_sha(sha, 'python')
-    layer = get_latest_layer_by_name(layer_name)
-    if layer.get('LayerVersionArn'):
-        version_arn = layer['LayerVersionArn']
-        print(f'SKIP CREATE LAYER: ALREADY EXISTS: {version_arn}')
-    else:
-        version_arn = create_python_package_layer(layer_name, layer_s3_key, runtime, arch)
-    return version_arn
 
 
 def get_func_info_by_short_name(short_name: str, alias: str = settings.FUNC_ALIAS) -> dict:
@@ -284,23 +297,15 @@ def filter_func_latest_version(func_versions: list) -> dict:
 def compile_and_upload_python_code(repo_path: str, specs: dict) -> str:
     print('ZIPPING CODE ARCHIVE...')
     func_s3_key = specs['func_s3_key']
-    tmp_path = '/tmp/code_{}.zip'.format(uuid.uuid4().hex)
-    # # FYI: "git archive" WILL RESPECT [".gitignore", ".gitattributes"]
-    # assert 0 == os.system(f'cd {repo_path} && git archive HEAD . -o {tmp_path}'), 'FAILED TO ARCHIVE'
-    # for ignore in specs.get('upload-ignore') or []:
-    #     assert 0 == os.system(f'zip --delete {tmp_path} "{ignore}" ||true')
-    # assert 0 == os.system(f'zip -sf {tmp_path}'), f'FAILED TO READ ZIP FILE: {tmp_path}'
-    patterns = ['.git/*', 'tests/*', '*/__pycache__/*', '.DS_Store']
-    patterns += specs.get('upload-ignore') or []
-    ignores = ' '.join([f'--exclude="{ptn}"' for ptn in patterns])
-    cmd = f'cd {repo_path} && zip -r {ignores} {tmp_path} .'
-    assert 0 == os.system(cmd), 'FAILED TO ARCHIVE'
-    print('DONE: ZIP ARCHIVED')
+    tmp_path = '/tmp/code_{}.zip'.format(repo_path.replace('/', '_'))
+    ignores = ' '.join([f'--exclude="{ptn}"' for ptn in specs.get('upload-ignore', [])])
+    cmd = f'cd {repo_path} && git ls-files --recurse-submodules |xargs zip -FSrq {ignores} {tmp_path}'
+    assert os.system(cmd) == 0, 'FAILED TO ARCHIVE'
+    fsize = '{:.2f}'.format(os.stat(tmp_path).st_size / 1024 / 1024)
+    print(f'CODE ZIPPED, NOW UPLOADING... [{fsize}MB]')
     s3_client.upload_file(tmp_path, func_s3_key)
     assert s3_client.exists(func_s3_key), f'FAILED TO UPLOAD CODE: {func_s3_key}'
     print('DONE: UPLOADED CODE ZIP ARCHIVE')
-    assert 0 == os.system(f'rm {tmp_path} ||true')
-    print('DONE: REMOVED TMP FILES')
     return func_s3_key
 
 
@@ -323,8 +328,9 @@ def create_python_function(specs: dict) -> dict:
         },
         'Tags': {
             'app_name': settings.APPLICATION_NAME,
+            'stage': f'{settings.STAGE_NAME}',
         },
-        'Environment': {'Variables': get_app_env_dict()},
+        'Environment': {'Variables': specs['env']},
         'TracingConfig': {'Mode': 'Active' if settings.ENABLE_XRAY else 'PassThrough'},
         'Description': full_name,
     }
@@ -335,7 +341,7 @@ def create_python_function(specs: dict) -> dict:
     if specs.get('vpc'):
         args.update({'VpcConfig': {
             'SubnetIds': specs['subnet-ids'],
-            'SecurityGroupIds': specs['sec-group-ids'],
+            'SecurityGroupIds': specs['secgroup-ids'],
         }})
         print('\t==>NOTICE: WILL SET LAMBDA INSIDE OF VPC')
     resp = lambda_client.create_function(**args)
@@ -372,7 +378,7 @@ def update_function_config(specs: dict) -> dict:
         'Runtime': specs['runtime'],  # REQUIRED
         'Timeout': specs['timeout'],
         'MemorySize': specs['mem'],
-        'Environment': {'Variables': get_app_env_dict()},
+        'Environment': {'Variables': specs['env']},
         'TracingConfig': {'Mode': 'Active' if settings.ENABLE_XRAY else 'PassThrough'},
     }
     if specs.get('layer_arn_list'):
@@ -382,7 +388,7 @@ def update_function_config(specs: dict) -> dict:
     if specs.get('vpc'):
         args.update({'VpcConfig': {
             'SubnetIds': specs['subnet-ids'],
-            'SecurityGroupIds': specs['sec-group-ids'],
+            'SecurityGroupIds': specs['secgroup-ids'],
         }})
         print('\t==>NOTICE: WILL SET LAMBDA INSIDE OF VPC')
     resp = lambda_client.update_function_configuration(**args)
@@ -406,7 +412,7 @@ def create_func_alias(func_name, alias, version) -> dict:
     resp = lambda_client.create_alias(FunctionName=func_name, Name=alias, FunctionVersion=version)
     resp.pop('ResponseMetadata', None)
     alias_version = resp['FunctionVersion']
-    print(f'DONE: REDIRECTED ALIAS {alias} TO VERSION: [{alias_version}]')
+    print(f'DONE: SET ALIAS {alias} TO VERSION: [{alias_version}]')
     return resp
 
 
@@ -414,7 +420,7 @@ def update_func_alias(func_name, alias, version) -> dict:
     resp = lambda_client.update_alias(FunctionName=func_name, Name=alias, FunctionVersion=version)
     resp.pop('ResponseMetadata', None)
     alias_version = resp['FunctionVersion']
-    print(f'DONE: REDIRECTED ALIAS {alias} TO VERSION: [{alias_version}]')
+    print(f'DONE: SET ALIAS {alias} TO VERSION: [{alias_version}]')
     return resp
 
 

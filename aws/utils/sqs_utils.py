@@ -31,8 +31,10 @@ def render_specs(specs: dict) -> dict:
     return specs
 
 
-def get_queue_full_name(name: str, qtype: str = 'standard') -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-queue-{name}'
+def get_queue_full_name(short_name: str, qtype: str = 'standard') -> str:
+    prefix = f'{settings.APPLICATION_NAME}-{settings.STAGE_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     full_name += '.fifo' if qtype == 'fifo' else ''
     return full_name
 

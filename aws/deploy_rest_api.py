@@ -1,5 +1,5 @@
-import os
 import logging
+from pathlib import Path
 
 from aws.utils import common_utils
 from aws.utils import rest_api_utils
@@ -16,10 +16,7 @@ class RestApiDeployHelper:
         if not self.template['services'].get('rest-api'):
             return
         repo_path = self.template['info']['repo_path']
-        swagger_path = os.path.realpath(os.path.join(
-            os.path.expanduser(repo_path),
-            self.template['services']['rest-api']['swagger-path']
-        ))
+        swagger_path = str(Path(repo_path).expanduser() / self.template['services']['rest-api']['swagger-path'])
         self.specs = rest_api_utils.render_specs(self.template['services']['rest-api'])
         self.swagger = rest_api_utils.render_swagger(swagger_path, self.specs)
         remote = rest_api_utils.get_api_by_name(self.specs['full-name'])
@@ -50,21 +47,21 @@ class RestApiDeployHelper:
             raise RuntimeError('MUST PROVIDE [api_id] FOR DEPLOYING INTEGRATION.')
         remote_route_map = rest_api_utils.get_api_route_map(self.api_id)
         local_route_map = common_utils.parse_swagger_route_map(self.swagger['paths'])
-        for (method, route), specs in remote_route_map.items():
-            route_info = local_route_map[(method.upper(), route)]
-            route_id = specs['id']
-            if route_info.get('x-lambda-name'):
-                self._integrate_lambda(specs['id'], method, route, route_info['x-lambda-name'])
-            elif route_info.get('x-stepfunc-name'):
+        for (method, route), info in remote_route_map.items():
+            route_id = info['id']
+            specs = local_route_map[(method.upper(), route)]
+            if specs.get('x-lambda-name'):
+                self._integrate_lambda(route_id, method, route, specs['x-lambda-name'])
+            elif specs.get('x-stepfunc-name'):
                 # FIXME-->
-                self._integrate_stepfunc(specs['id'], method, route, route_info['x-stepfunc-name'])
-            elif route_info.get('x-s3-target'):
+                self._integrate_stepfunc(route_id, method, route, specs['x-stepfunc-name'])
+            elif specs.get('x-s3-target'):
                 # FIXME-->
-                self._integrate_s3(specs['id'], method, route, route_info['x-s3-target'])
+                self._integrate_s3(route_id, method, route, specs['x-s3-target'])
             else:
                 print(f'NO INTEGRATION FOUND FOR [{method} {route}]')
             # UPDATE ROUTE AUTH
-            rest_api_utils.update_route_authorizor(self.api_id, route_id, method, route_info.get('auth'))
+            rest_api_utils.update_route_authorizor(self.api_id, route_id, method, specs.get('auth'))
         return
 
     def _integrate_lambda(self, route_id: str, method: str, route: str, name: str):

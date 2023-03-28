@@ -2,7 +2,7 @@
 REF: https://cloud.google.com/python/docs/reference/storage/latest/google.cloud.storage.client.Client
 """  # NOQA
 from google.cloud.storage.blob import Blob
-from utils.gcp_utils.gcp_clients import storage_client
+from gcp.utils.gcp_utils.gcp_clients import storage_client
 
 import logging
 logger = logging.getLogger(__name__)
