@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def get_template() -> dict:
     repo_path = settings.LOCAL_REPO_PATH or download_application_code()
     repo_path = os.path.realpath(os.path.expanduser(repo_path))
-    path = os.path.join(repo_path, 'definitions/template.yaml')
+    path = os.path.join(repo_path, 'definitions/', settings.TEMPLATE_NAME)
     assert os.path.exists(path), f'SWAWGGER FILE NOT EXISTS: {path}'
     template = render_yaml(path)
     template['info']['repo_path'] = repo_path

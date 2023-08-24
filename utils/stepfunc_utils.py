@@ -34,7 +34,7 @@ def render_specs(specs: dict) -> dict:
 
 
 def get_stepfunc_full_name(short_name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-stepfunc-{short_name}'
+    full_name = f'stepfunc-{settings.APPLICATION_NAME}-{settings.STAGE_NAME}-{short_name}'
     return full_name
 
 

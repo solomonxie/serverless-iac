@@ -1,4 +1,5 @@
 envfile-local
+envfile-*
 
 
 # Byte-compiled / optimized / DLL files

@@ -1,5 +1,5 @@
 -include envfile
--include envfile-local
+-include envfile-${APPNAME}
 export PYTHONPATH := .
 .EXPORT_ALL_VARIABLES:
 .PHONY: deploy-all
@@ -7,33 +7,41 @@ export PYTHONPATH := .
 
 describe:
 	echo ${ENABLE_VPC}
-	@python -c "import settings; print(settings.DESCRIPTION)"
+	@.git/venv/bin/python -c "import settings; print(settings.DESCRIPTION)"
 
 deploy-all:
-	python deploy/aws/deploy_lambda.py
-	python deploy/aws/deploy_rest_api.py
-	python deploy/aws/deploy_step_function.py
-	python deploy/aws/deploy_eventbridge.py
-	# python deploy/aws/deploy_http_api.py
+	.git/venv/bin/python deploy/aws/deploy_lambda.py
+	.git/venv/bin/python deploy/aws/deploy_rest_api.py
+	.git/venv/bin/python deploy/aws/deploy_step_function.py
+	.git/venv/bin/python deploy/aws/deploy_eventbridge.py
+	# .git/venv/bin/python deploy/aws/deploy_http_api.py
 
+
+deploy-layer:
+	.git/venv/bin/python deploy/aws/deploy_lambdalayer.py
 
 deploy-lambda:
-	python deploy/aws/deploy_lambda.py
-
-deploy-http-api:
-	python deploy/aws/deploy_http_api.py
-
-deploy-rest-api:
-	python deploy/aws/deploy_rest_api.py
-
-deploy-event:
-	python deploy/aws/deploy_eventbridge.py
+	.git/venv/bin/python deploy/aws/deploy_lambda.py
 
 deploy-stepfunc:
-	python deploy/aws/deploy_step_function.py
+	.git/venv/bin/python deploy/aws/deploy_step_function.py
+
+deploy-rest-api:
+	.git/venv/bin/python deploy/aws/deploy_rest_api.py
+
+deploy-http-api:
+	.git/venv/bin/python deploy/aws/deploy_http_api.py
+
+deploy-event:
+	.git/venv/bin/python deploy/aws/deploy_eventbridge.py
 
 destroy:
-	python deploy/aws/destroy_app.py
+	.git/venv/bin/python deploy/aws/destroy_app.py
+
+
+venv:
+	[ -e .git ] && [ ! -e .git/venv ] && python3 -m virtualenv -p python3.7 .git/venv ||true
+	yes | .git/venv/bin/python -m pip install -r requirements.txt
 
 
 docker-build:

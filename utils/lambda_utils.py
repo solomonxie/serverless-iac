@@ -1,6 +1,5 @@
 """
 REF: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/lambda.html
-REF: https://aws.amazon.com/premiumsupport/knowledge-center/lambda-layer-simulated-docker/
 REF: https://stackoverflow.com/questions/33825815/how-to-calculate-the-codesha256-of-aws-lambda-deployment-package-before-uploadin
 """  # NOQA
 import os
@@ -9,10 +8,8 @@ import uuid
 import logging
 
 import settings
-from utils import iam_utils
 from utils.s3_utils import S3Bucket
 from utils.common_utils import is_int
-from utils.common_utils import file_to_sha
 from utils.common_utils import get_app_env_dict
 
 lambda_client = settings.lambda_client
@@ -20,44 +17,8 @@ s3_client = S3Bucket(settings.AWS_LAMBDA_BUCKET)
 logger = logging.getLogger(__name__)
 
 
-def render_specs(specs: dict) -> dict:
-    specs['full_name'] = get_func_full_name(specs['name'])
-    specs['func_s3_key'] = get_func_s3_key_by_name(specs['full_name'])
-    specs['timeout'] = specs.get('timeout') or 60
-    specs['arch'] = specs.get('arch') or 'x86_64'
-    specs['mem'] = specs.get('mem') or 128
-    specs['ro-name'] = iam_utils.get_role_full_name(specs['name'])
-    specs['role_arn'] = iam_utils.get_role_arn_by_name(specs['ro-name'])
-    specs['po-name'] = iam_utils.get_policy_full_name('lambda-general')
-    specs['alias'] = settings.FUNC_ALIAS
-    specs['preserve'] = int(specs.get('preserve') or 0)
-    if settings.ENABLE_VPC and specs.get('vpc'):
-        specs['subnet-ids'] = str(specs['vpc']['subnet-ids']).split(',')
-        specs['sec-group-ids'] = str(specs['vpc']['sec-group-ids']).split(',')
-        assert all([specs['subnet-ids'], specs['sec-group-ids']]), 'MISSING SUBNET & SECURITY-GROUP FOR VPC'
-        specs['po-path'] = './iam/iam-policy-lambda-execute-vpc.json'
-    else:
-        specs['subnet-ids'] = []
-        specs['sec-group-ids'] = []
-        specs['vpc'] = {}
-        specs['po-path'] = './iam/iam-policy-lambda-execute.json'
-    # LIVE FETCH
-    specs['remote'] = get_func_info_by_name(specs['full_name'])
-    latest = get_func_latest_version(specs['full_name'])
-    specs['latest_version'] = latest.get('Version') or specs['remote'].get('Version')
-    specs['alias_info'] = get_func_alias(specs['full_name'], specs['alias'])
-    # SKIP DEPLOY
-    if any([
-        settings.DEPLOY_TYPE not in ['full', 'lambda'],
-        settings.DEPLOY_TYPE == 'lambda' and settings.DEPLOY_TARGET != specs['name'],
-    ]):
-        print('SKIP DEPLOYMENT FOR LAMBDA [{}]'.format(specs['name']))
-        specs['no-deploy'] = True
-    return specs
-
-
 def get_func_full_name(short_name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-lambda-{short_name}'
+    full_name = f'lambda-{settings.APPLICATION_NAME}-{settings.STAGE_NAME}-{short_name}'
     return full_name
 
 
@@ -70,21 +31,10 @@ def get_func_arn_by_name(short_name: str) -> str:
 
 
 def get_func_s3_key_by_name(full_name: str) -> str:
-    func_s3_key = 'lambda-function/{}/{}/{}/{}-BUILD-{}.zip'.format(
-        settings.STAGE_NAME, settings.STAGE_SUBNAME, settings.APPLICATION_NAME,
-        full_name, settings.BUILD_NO,
+    func_s3_key = 'lambda-function/{}/{}/{}-BUILD-{}.zip'.format(
+        settings.APPLICATION_NAME, settings.STAGE_NAME, full_name, settings.BUILD_NO,
     )
     return func_s3_key
-
-
-def get_layer_full_name(short_name: str) -> str:
-    full_name = f'{settings.APPLICATION_NAME}-lambdalayer-python-{short_name}'
-    return full_name
-
-
-def get_layer_arn(layer_name: str) -> str:
-    arn = f'arn:aws:lambda:{settings.AWS_REGION}:{settings.AWS_ACCOUNT_ID}:layer:{layer_name}'
-    return arn
 
 
 def list_all_functions_by_app() -> dict:
@@ -97,18 +47,6 @@ def list_all_functions_by_app() -> dict:
         f['FunctionName']: f for f in functions if str(f['FunctionName']).startswith(settings.APPLICATION_NAME)
     }
     return func_map
-
-
-def get_layers_by_app_name(app_name: str):
-    layers = []
-    paginator = lambda_client.get_paginator('list_layers')
-    response_iterator = paginator.paginate()
-    for resp in response_iterator:
-        layers += resp['Layers']
-    layer_map = {
-        x['LayerName']: x for x in layers if str(x.get('LayerName')).startswith(str(app_name))
-    }
-    return layer_map
 
 
 def get_lambda_invoke_caller_arn(api_id: str, route: str):
@@ -132,12 +70,6 @@ def get_lambda_invoke_policy(func_arn, caller_arn):
     return po
 
 
-def get_layer_s3_key_by_sha(sha: str, layer_type: str) -> str:
-    leveled_path = '/'.join([sha[i] for i in range(5)])
-    layer_s3_key = f'lambda-layer/{settings.APPLICATION_NAME}/{layer_type}/{leveled_path}/{sha}.zip'
-    return layer_s3_key
-
-
 def create_lambda_invoke_policy(func_arn: str, caller_arn: str):
     args = {
         'FunctionName': func_arn,  # REQUIRED
@@ -159,74 +91,6 @@ def remove_lambda_invoke_policy(func_arn, po_id):
     resp.pop('ResponseMetadata', None)
     print('DONE: REMOEVD EXISTING LAMBDA POLICY, WILL ATTACH A NEW ONE')
     return resp
-
-
-def build_python_package_layer(path: str) -> str:
-    sha = file_to_sha(os.path.realpath(os.path.expanduser(path)))
-    layer_s3_key = get_layer_s3_key_by_sha(sha, 'python')
-    if s3_client.exists(layer_s3_key):
-        print('SKIP UPLOAD: LAYER ALREADY EXISTS ON S3')
-        return sha
-    # opts = [
-    #     'docker run --rm -v',
-    #     '{}:/var/task'.format(os.getcwd()),
-    #     '"public.ecr.aws/sam/build-python3.8"',
-    #     '/bin/sh -c',
-    #     '"pip install -r requirements_abc_service.txt -t python/lib/python3.8/site-packages/; exit"',
-    # ]
-    # cmd = ' '.join(opts)
-    assert 0 == os.system('rm -rdf {tmp_path} python ||true')
-    print('BUILDING PACKAGES...')
-    cmd = f'pip install -r {path} --compile --prefer-binary -t python/lib/python3.8/site-packages/'
-    assert 0 == os.system(cmd)
-    print('DONE: BUILD LAYER')
-    tmp_path = '/tmp/layer_{}.zip'.format(uuid.uuid4().hex)
-    assert 0 == os.system(f'zip -r {tmp_path} python')
-    assert 0 == os.system(f'zip -sf {tmp_path}; du -sh {tmp_path}')
-    assert 0 == os.system('rm -rdf python ||true')
-    print('DONE: ZIPPED LAYER')
-    s3_client.upload_file(tmp_path, layer_s3_key)
-    assert s3_client.exists(layer_s3_key), f'FAILED TO UPLOAD: {tmp_path}'
-    print('DONE: UPLOADED LAYER')
-    return sha
-
-
-def create_python_package_layer(layer_name: str, layer_s3_key: str):
-    print(f'CREATING LAYER: [{layer_name}]')
-    args = {
-        'LayerName': layer_name,  # REQUIRED
-        'Content': {  # REQUIRED
-            'S3Bucket': settings.AWS_LAMBDA_BUCKET,
-            'S3Key': layer_s3_key,
-        },
-        'CompatibleRuntimes': ['python3.8'],
-        'CompatibleArchitectures': ['x86_64'],
-    }
-    resp = lambda_client.publish_layer_version(**args)
-    arn = resp['LayerVersionArn']
-    print('OK: CREATED LAYER [{}] OF VERSION [V:{}]'.format(layer_name, resp['Version']))
-    return arn
-
-
-def get_latest_layer_by_name(layer_name: str):
-    arn = get_layer_arn(layer_name)
-    resp = lambda_client.list_layer_versions(LayerName=layer_name)
-    versions = sorted(x['Version'] for x in resp['LayerVersions'])
-    ver = versions[-1] if bool(versions) else None
-    layer = lambda_client.get_layer_version_by_arn(Arn=f'{arn}:{ver}') if ver else {}
-    return layer
-
-
-def deploy_python_package_layer(sha: str):
-    layer_name = get_layer_full_name(sha)
-    layer_s3_key = get_layer_s3_key_by_sha(sha, 'python')
-    layer = get_latest_layer_by_name(layer_name)
-    if layer.get('LayerVersionArn'):
-        version_arn = layer['LayerVersionArn']
-        print(f'SKIP CREATE LAYER: ALREADY EXISTS: {version_arn}')
-    else:
-        version_arn = create_python_package_layer(layer_name, layer_s3_key)
-    return version_arn
 
 
 def get_func_info_by_short_name(short_name: str, alias: str = settings.FUNC_ALIAS) -> dict:
@@ -311,7 +175,7 @@ def create_python_function(specs: dict) -> dict:
         'FunctionName': full_name,  # REQUIRED
         'Handler': specs['handler'],  # REQUIRED
         'Runtime': specs['runtime'],  # REQUIRED
-        'Role': specs['role_arn'],  # REQUIRED
+        'Role': specs['role-arn'],  # REQUIRED
         'Architectures': [specs['arch']],
         'Timeout': specs['timeout'],
         'MemorySize': specs['mem'],
@@ -366,7 +230,7 @@ def update_function_config(specs: dict) -> dict:
     print('UPDATING LAMBDA CONFIG FOR: {}'.format(specs['full_name']))
     args = {
         'FunctionName': specs['full_name'],
-        'Role': specs['role_arn'],
+        'Role': specs['role-arn'],
         'Handler': specs['handler'],
         'Runtime': specs['runtime'],  # REQUIRED
         'Timeout': specs['timeout'],
@@ -521,7 +385,3 @@ def clean_func_old_versions(func_versions: list) -> list:
             logger.exception(e)
             print(f'FAILED TO REMOVE FUNCITON VERSION: [{func_name}:{version}], {e}')
     return remove_vers
-
-
-def clean_layer_old_versions(sha: list) -> bool:
-    return True

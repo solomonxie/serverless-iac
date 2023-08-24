@@ -21,20 +21,12 @@ class LambdaDeployHelper:
 
     def deploy_functions(self):
         for specs in self.template['resources'].get('lambda') or []:
-            specs = lambda_utils.render_specs(specs)
+            specs = render_specs(specs)
             print('==>DEPLOYING LAMBDA {}'.format(specs['name']))
             full_name = specs['full_name']
             if specs.get('no-deploy') is True:
                 print('SKIP DEPLOYMENT FOR LAMBDA [{}]'.format(specs['name']))
                 continue
-            # DEPLOY LAYERS
-            for layer in specs.get('layers') or []:
-                if layer['type'] == 'python-requirements':
-                    path = os.path.join(self.repo_path, layer['manifest'])
-                    sha = lambda_utils.build_python_package_layer(path)
-                    layer['arn'] = lambda_utils.deploy_python_package_layer(sha)
-                elif layer['type'] == 'nodejs-package':
-                    pass  # TODO: SUPPORT MORE LANGUAGES
             specs['layer_arn_list'] = [x['arn'] for x in specs.get('layers', [])]
             # DEPLOY IAM ROLE/POLICY
             iam_specs = {}
@@ -76,6 +68,42 @@ class LambdaDeployHelper:
         for specs in self.template['resources']['lambda']:
             print('REMOVING LAMBDA OLDER VERSIONS: {}'.format(specs['full_name']))
             lambda_utils.clean_func_old_versions(specs.get('versions') or [])
+
+
+def render_specs(specs: dict) -> dict:
+    specs['full_name'] = lambda_utils.get_func_full_name(specs['name'])
+    specs['func_s3_key'] = lambda_utils.get_func_s3_key_by_name(specs['full_name'])
+    specs['timeout'] = specs.get('timeout') or 60
+    specs['arch'] = specs.get('arch') or 'x86_64'
+    specs['mem'] = specs.get('mem') or 128
+    specs['ro-name'] = iam_utils.get_role_full_name(specs['name'])
+    specs['role-arn'] = iam_utils.get_role_arn_by_name(specs['ro-name'])
+    specs['po-name'] = iam_utils.get_policy_full_name('lambda-general')
+    specs['alias'] = settings.FUNC_ALIAS
+    specs['preserve'] = int(specs.get('preserve') or 0)
+    if settings.ENABLE_VPC and specs.get('vpc'):
+        specs['subnet-ids'] = str(specs['vpc']['subnet-ids']).split(',')
+        specs['sec-group-ids'] = str(specs['vpc']['sec-group-ids']).split(',')
+        assert all([specs['subnet-ids'], specs['sec-group-ids']]), 'MISSING SUBNET & SECURITY-GROUP FOR VPC'
+        specs['po-path'] = './iam/iam-policy-lambda-execute-vpc.json'
+    else:
+        specs['subnet-ids'] = []
+        specs['sec-group-ids'] = []
+        specs['vpc'] = {}
+        specs['po-path'] = './iam/iam-policy-lambda-execute.json'
+    # LIVE FETCH
+    specs['remote'] = lambda_utils.get_func_info_by_name(specs['full_name'])
+    latest = lambda_utils.get_func_latest_version(specs['full_name'])
+    specs['latest_version'] = latest.get('Version') or specs['remote'].get('Version')
+    specs['alias_info'] = lambda_utils.get_func_alias(specs['full_name'], specs['alias'])
+    # SKIP DEPLOY
+    if any([
+        settings.DEPLOY_TYPE not in ['full', 'lambda'],
+        settings.DEPLOY_TYPE == 'lambda' and settings.DEPLOY_TARGET != specs['name'],
+    ]):
+        print('SKIP DEPLOYMENT FOR LAMBDA [{}]'.format(specs['name']))
+        specs['no-deploy'] = True
+    return specs
 
 
 def main():
