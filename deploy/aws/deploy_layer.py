@@ -2,7 +2,7 @@ import os
 import logging
 
 from utils import common_utils
-from utils import lambdalayer_utils
+from utils import layer_utils
 from utils.common_utils import file_to_sha
 
 logger = logging.getLogger(__name__)
@@ -26,22 +26,25 @@ class LambdaLayerDeployHelper:
                 # TODO: SUPPORT MORE LANGUAGES
                 pass
             elif specs['type'] == 'py_requirements':
-                lambdalayer_utils.build_layer_py_requirements(specs)
-                lambdalayer_utils.deploy_python_package_layer(specs)
+                layer_s3_key = layer_utils.build_layer_py_requirements(specs)
+                if layer_s3_key:
+                    layer_utils.create_layer(specs)
+                # layer_utils.create_layer(specs)
         return
 
     def clear(self):
-        pass
+        for specs in self.template['services'].get('lambdalayer') or []:
+            layer_utils.clean_layer_old_versions(specs['name'])
 
 
 def render_specs(specs: dict, repo_path: str) -> dict:
     assert specs['runtime'] in ['python3.7', 'python3.8', 'python3.9']
     specs['runtime'] = specs['runtime']
     assert specs['arch'] in ['x86_64', 'arm64']
-    specs['arn'] = lambdalayer_utils.get_layer_arn(specs['name'])
+    specs['arn'] = layer_utils.get_layer_arn(specs['name'])
     specs['path'] = os.path.join(repo_path, specs['manifest'])
     specs['sha'] = file_to_sha(os.path.realpath(os.path.expanduser(specs['path'])))
-    specs['layer_s3_key'] = lambdalayer_utils.get_layer_s3_key(specs['name'])
+    specs['layer_s3_key'] = layer_utils.get_layer_s3_key(specs['name'])
     specs['sha_s3_key'] = specs['layer_s3_key'] + '.sha'
     return specs
 

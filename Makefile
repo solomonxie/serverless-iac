@@ -20,7 +20,7 @@ deploy-iam:
 	.git/venv/bin/python deploy/aws/deploy_iam.py
 
 deploy-layer:
-	.git/venv/bin/python deploy/aws/deploy_lambdalayer.py
+	.git/venv/bin/python deploy/aws/deploy_layer.py
 
 deploy-lambda:
 	.git/venv/bin/python deploy/aws/deploy_lambda.py

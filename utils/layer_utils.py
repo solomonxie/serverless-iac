@@ -46,7 +46,7 @@ def build_layer_py_requirements(specs: dict) -> str:
     runtime = specs['runtime']
     if s3_client.exists(sha_s3_key) and s3_client.download_file_blob(sha_s3_key).decode() == sha:
         print('SKIP UPLOAD: LAYER ALREADY EXISTS ON S3')
-        return layer_s3_key
+        return None
     print('BUILDING PACKAGES...')
     tmp_path = f'/tmp/layer_{sha}.zip'
     assert 0 == os.system(f'rm -rdf {tmp_path} python ||true')
@@ -58,8 +58,8 @@ def build_layer_py_requirements(specs: dict) -> str:
     # cmd = f'pip install -r {path} -t python/lib/{runtime}/site-packages/'
     assert 0 == os.system(cmd)
     print('OK: BUILD LAYER')
-    assert 0 == os.system(f'zip -r {tmp_path} {workdir}/python')
-    assert 0 == os.system(f'zip -sf {tmp_path}; du -sh {tmp_path}')
+    assert 0 == os.system(f'cd {workdir} && zip -r {tmp_path} python')
+    assert 0 == os.system(f'cd {workdir} && zip -sf {tmp_path}; du -sh {tmp_path}')
     assert 0 == os.system(f'rm -rdf {workdir}/python ||true')
     print('OK: ZIPPED LAYER')
     s3_client.upload_file(tmp_path, layer_s3_key)
@@ -68,7 +68,7 @@ def build_layer_py_requirements(specs: dict) -> str:
     return layer_s3_key
 
 
-def create_python_package_layer(specs: dict):
+def create_layer(specs: dict):
     layer_name = specs['name']
     layer_s3_key = specs['layer_s3_key']
     print(f'CREATING LAYER: [{layer_name}]')
@@ -96,15 +96,5 @@ def get_latest_layer_by_name(layer_name: str):
     return layer
 
 
-def deploy_python_package_layer(specs: dict):
-    layer = get_latest_layer_by_name(specs['name'])
-    if layer.get('LayerVersionArn'):
-        version_arn = layer['LayerVersionArn']
-        print(f'SKIP CREATE LAYER: ALREADY EXISTS: {version_arn}')
-    else:
-        version_arn = create_python_package_layer(specs)
-    return version_arn
-
-
-def clean_layer_old_versions(sha: list) -> bool:
+def clean_layer_old_versions(layer_name: str) -> bool:
     return True

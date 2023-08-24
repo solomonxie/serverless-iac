@@ -4,7 +4,7 @@ import logging
 from utils import iam_utils
 from utils import common_utils
 from utils import lambda_utils
-from utils import lambdalayer_utils
+from utils import layer_utils
 
 import settings
 logger = logging.getLogger(__name__)
@@ -26,7 +26,6 @@ class LambdaDeployHelper:
         lambda_utils.upload_code_to_s3(self.repo_path, ignores)
 
     def deploy_functions(self):
-        __import__('pudb').set_trace()
         for specs in self.template['resources'].get('lambda') or []:
             specs = render_specs(specs)
             print('==>DEPLOYING LAMBDA {}'.format(specs['name']))
@@ -79,7 +78,7 @@ def render_specs(specs: dict) -> dict:
     # Layers
     specs['layer_arn_list'] = []
     for layer in specs.get('layers') or []:
-        layer_info = lambdalayer_utils.get_latest_layer_by_name(layer['name'])
+        layer_info = layer_utils.get_latest_layer_by_name(layer['name'])
         assert layer_info, 'Layer [{}] does not exist'.format(layer['name'])
         layer_latest_arn = layer_info['LayerVersionArn']
         specs['layer_arn_list'].append(layer_latest_arn)

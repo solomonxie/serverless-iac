@@ -23,6 +23,7 @@ def get_template() -> dict:
     lambda_default = template['services'].get('lambda') or {}
     for specs in template['resources'].get('lambda') or []:
         specs.update({k: v for k, v in lambda_default.items() if k not in specs})
+        specs['env'] = {**lambda_default.get('env', {}), **specs.get('env', {})}
     for specs in template['resources'].get('stepfunc') or []:
         specs['definition-path'] = os.path.realpath(os.path.join(repo_path, specs['definition-path']))
     for specs in template['resources'].get('schedule') or []:

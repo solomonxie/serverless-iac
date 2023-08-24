@@ -139,6 +139,10 @@ def filter_func_latest_version(func_versions: list) -> dict:
 
 def upload_code_to_s3(repo_path: str, ignores: list = None) -> str:
     print('ZIPPING CODE ARCHIVE...')
+    s3_key = get_code_s3_key()
+    if s3_client.exists(s3_key):
+        print(f'SKIP code upload: already exists [{s3_key}]')
+        return s3_key
     tmp_path = '/tmp/code_{}.zip'.format(uuid.uuid4().hex)
     # # FYI: "git archive" WILL RESPECT [".gitignore", ".gitattributes"]
     # assert 0 == os.system(f'cd {repo_path} && git archive HEAD . -o {tmp_path}'), 'FAILED TO ARCHIVE'
@@ -151,7 +155,6 @@ def upload_code_to_s3(repo_path: str, ignores: list = None) -> str:
     cmd = f'cd {repo_path} && zip -r {ignores} {tmp_path} .'
     assert 0 == os.system(cmd), 'FAILED TO ARCHIVE'
     print('OK: ZIP ARCHIVED')
-    s3_key = get_code_s3_key()
     s3_client.upload_file(tmp_path, s3_key)
     print('OK: UPLOADED CODE ZIP ARCHIVE')
     os.system(f'rm {tmp_path} ||true')
