@@ -115,8 +115,8 @@
                 "s3:GetObjectAcl"
             ],
             "Resource": [
-                "arn:aws:s3:::${AWS_LAMBDA_BUCKET}",
-                "arn:aws:s3:::${AWS_LAMBDA_BUCKET}/*"
+                "arn:aws:s3:::${IAC_BUCKET}",
+                "arn:aws:s3:::${IAC_BUCKET}/*"
             ]
         },
         {

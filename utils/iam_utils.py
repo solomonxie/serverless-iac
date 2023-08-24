@@ -40,7 +40,7 @@ def get_iam_role(ro_name: str) -> dict:
     try:
         response = iam_client.get_role(RoleName=ro_name)
         ro = response['Role']
-        print('DONE: FOUND IAM ROLE [{}]'.format(ro_name))
+        print('FOUND IAM ROLE [{}]'.format(ro_name))
     except Exception:
         print('ROLE NOT EXISTS:', ro_name)
     return ro
@@ -88,28 +88,31 @@ def list_policy_versions(arn: str) -> list:
     return versions
 
 
-def create_iam_role(ro_name: str, service: str = 'lambda') -> dict:
-    service_host = {
+def create_iam_role(ro_name: str, trust_entity: str, tags: dict) -> dict:
+    service = {
         'lambda': 'lambda.amazonaws.com',
         # 'stepfunc': 'states.amazonaws.com',
         'stepfunc': ['states.amazonaws.com', 'apigateway.amazonaws.com'],
         'eventbridge': 'events.amazonaws.com',
-    }[service]
+    }[trust_entity]
+    trust_policy = json.dumps({
+        "Version": "2012-10-17",
+        "Statement": [{
+            "Effect": "Allow",
+            "Principal": {"Service": service},
+            "Action": "sts:AssumeRole",
+        }]
+    })
+    tag_list = [{'Key': k, 'Value': v} for k, v in (tags or {}).items()]
     response = iam_client.create_role(
         RoleName=ro_name,  # REQUIRED
-        AssumeRolePolicyDocument=json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Effect": "Allow",
-                "Principal": {"Service": service_host},
-                "Action": "sts:AssumeRole",
-            }]
-        }),  # REQUIRED
-        Description=ro_name + ': ' + service,
+        AssumeRolePolicyDocument=trust_policy,  # REQUIRED
+        Tags=tag_list,
+        Description=f'{ro_name}: {trust_entity}',
         MaxSessionDuration=3600,
     )
     ro = response['Role']
-    print('DONE: CREATED IAM ROLE [{}]'.format(ro_name))
+    print('OK: CREATED IAM ROLE [{}]'.format(ro_name))
     return ro
 
 
@@ -117,35 +120,27 @@ def update_iam_role():
     pass
 
 
-def attach_policy(ro_name, policy_arn):
-    response = iam_client.attach_role_policy(
-        RoleName=ro_name,
-        PolicyArn=policy_arn,
-    )
-    response.pop('ResponseMetadata', None)
-    print('DONE: ATTACHED IAM POLICY [{}] TO ROLE: [{}]'.format(policy_arn, ro_name))
-    return response
-
-
 def get_iam_policy(arn):
     response = {}
     try:
         response = iam_client.get_policy(PolicyArn=arn)
         response.pop('ResponseMetadata', None)
-        print('DONE: FOUND IAM POLICY [{}]'.format(arn))
+        print('FOUND IAM POLICY [{}]'.format(arn))
     except Exception:
         print('POLICY NOT EXISTS:', arn)
     return response
 
 
-def create_iam_policy(po_name: str, doc_content: str) -> dict:
+def create_iam_policy(po_name: str, doc_content: str, tags: dict) -> dict:
+    tag_list = [{'Key': k, 'Value': v} for k, v in (tags or {}).items()]
     response = iam_client.create_policy(
         PolicyName=po_name,  # REQUIRED
         PolicyDocument=doc_content,  # REQUIRED
-        Description='this is my policy',
+        Description=po_name,
+        Tags=tag_list,
     )
     po = response['Policy']
-    print('DONE: CREATED IAM POLICY [{}]'.format(po_name))
+    print('OK: CREATED IAM POLICY [{}]'.format(po_name))
     return po
 
 
@@ -156,43 +151,53 @@ def update_iam_policy(arn, doc_content):
         SetAsDefault=True,  # ACT AS "UPDATE"
     )
     po = response['PolicyVersion']
-    print('DONE: UPDATED IAM POLICY [{}]'.format(arn))
+    print('OK: UPDATED IAM POLICY [{}]'.format(arn))
     return po
 
 
-def deploy_policy(po_name: str, path: str, **iam_specs) -> dict:
+def deploy_policy(po_name: str, path: str, tags: dict, **iam_specs) -> dict:
     assert len(po_name) <= 64, f'POLICY NAME SHOULD BE LESS THAN 64: {po_name}'
     po_path = os.path.realpath(os.path.expanduser(path))
     po_arn = get_policy_arn_by_name(po_name)
     po_content = json.dumps(common_utils.render_json(po_path, **iam_specs))
     po = get_iam_policy(po_arn) or {}
-    if not po:
-        po = create_iam_policy(po_name, po_content)
-    else:
+    if po:
         # po = update_iam_policy(po_arn, po_content)
         pass
+    else:
+        po = create_iam_policy(po_name, po_content, tags=tags)
     waiter = iam_client.get_waiter('policy_exists')
     waiter.wait(PolicyArn=po_arn, WaiterConfig={'Delay': 2, 'MaxAttempts': 30})
     return po
 
 
-def deploy_role(ro_name: str, po_name: str, event_source: str) -> dict:
+def deploy_role(ro_name: str, trust_entity: str, tags: dict) -> dict:
     assert len(ro_name) <= 64, f'ROLE NAME SHOULD BE LESS THAN 64: {ro_name}'
     ro = get_iam_role(ro_name)
     if not ro:
-        ro = create_iam_role(ro_name, event_source)
+        ro = create_iam_role(ro_name, trust_entity, tags)
         waiter = iam_client.get_waiter('role_exists')
         waiter.wait(RoleName=ro_name, WaiterConfig={'Delay': 2, 'MaxAttempts': 30})
     else:
         # iam_utils.update_iam_role()
         pass
+    return ro
+
+
+def attach_policy_to_role(ro_name: str, po_name: str):
     po_arn = get_policy_arn_by_name(po_name)
+    po = get_iam_policy(po_arn)
     existing_po_arns = list_role_policies(ro_name)
-    if po_arn not in existing_po_arns:
-        attach_policy(ro_name, po_arn)
+    if po and po_arn not in existing_po_arns:
+        response = iam_client.attach_role_policy(
+            RoleName=ro_name,
+            PolicyArn=po_arn,
+        )
+        response.pop('ResponseMetadata', None)
         # FIXME: NEWLY ATTACHED POLICY CANNOT BE IMMEDIATELY ASSUMED BY LAMBDA
         time.sleep(10)
-    return ro
+        print(f'OK: ATTACHED IAM POLICY [{po_arn}] TO ROLE: [{ro_name}]')
+    return
 
 
 def remove_roles(name_list: list):
@@ -201,7 +206,7 @@ def remove_roles(name_list: list):
         try:
             iam_client.delete_role(RoleName=name)
             removed.append(name)
-            print(f'DONE: REMOVED ROLE: {name}')
+            print(f'OK: REMOVED ROLE: {name}')
         except Exception as e:
             logger.exception(e)
     return removed
@@ -218,7 +223,7 @@ def remove_policies(arn_list: list):
                 except Exception:
                     pass
             iam_client.delete_policy(PolicyArn=arn)
-            print(f'DONE: REMOVED POLICY: {arn}')
+            print(f'OK: REMOVED POLICY: {arn}')
             removed.append(arn)
         except Exception as e:
             logger.exception(e)

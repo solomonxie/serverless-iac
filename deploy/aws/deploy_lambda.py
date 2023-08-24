@@ -4,6 +4,7 @@ import logging
 from utils import iam_utils
 from utils import common_utils
 from utils import lambda_utils
+from utils import lambdalayer_utils
 
 import settings
 logger = logging.getLogger(__name__)
@@ -23,13 +24,12 @@ class LambdaDeployHelper:
         for specs in self.template['resources'].get('lambda') or []:
             specs = render_specs(specs)
             print('==>DEPLOYING LAMBDA {}'.format(specs['name']))
-            full_name = specs['full_name']
             if specs.get('no-deploy') is True:
                 print('SKIP DEPLOYMENT FOR LAMBDA [{}]'.format(specs['name']))
                 continue
-            specs['layer_arn_list'] = [x['arn'] for x in specs.get('layers', [])]
             # DEPLOY IAM ROLE/POLICY
             iam_specs = {}
+            __import__('pudb').set_trace()
             iam_utils.deploy_policy(specs['po-name'], specs['po-path'], **iam_specs)
             iam_utils.deploy_role(specs['ro-name'], specs['po-name'], 'lambda')
             print('DONE: DEPLOYED LAMBDA IAM ROLE/POLICY FOR [{}]'.format(specs['name']))
@@ -54,9 +54,9 @@ class LambdaDeployHelper:
             ver = specs.get('latest_version') or specs['remote'].get('Version') or '$LATEST'
             alias_version = specs['alias_info'].get('FunctionVersion')
             if not alias_version:
-                specs['alias_info'] = lambda_utils.create_func_alias(full_name, settings.FUNC_ALIAS, ver)
+                specs['alias_info'] = lambda_utils.create_func_alias(specs['full_name'], settings.FUNC_ALIAS, ver)
             elif alias_version != ver:
-                specs['alias_info'] = lambda_utils.update_func_alias(full_name, settings.FUNC_ALIAS, ver)
+                specs['alias_info'] = lambda_utils.update_func_alias(specs['full_name'], settings.FUNC_ALIAS, ver)
             specs['alias_arn'] = specs['alias_info']['AliasArn']
             specs['latest_version'] = specs['alias_info']['FunctionVersion']
             print('=' * 60)
@@ -81,6 +81,17 @@ def render_specs(specs: dict) -> dict:
     specs['po-name'] = iam_utils.get_policy_full_name('lambda-general')
     specs['alias'] = settings.FUNC_ALIAS
     specs['preserve'] = int(specs.get('preserve') or 0)
+    # Layers
+    specs['layer_arn_list'] = []
+    __import__('pudb').set_trace()
+    for layer in specs.get('layers') or []:
+        layer_name = lambdalayer_utils.get_layer_full_name(layer['name'])
+        layer_info = lambdalayer_utils.get_latest_layer_by_name(layer_name)
+        assert layer_info, f'Layer [{layer_name}] does not exist'
+        layer_latest_arn = layer_info['LayerVersionArn']
+        specs['layer_arn_list'].append(layer_latest_arn)
+    [x['arn'] for x in specs.get('layers', [])]
+    # VPC
     if settings.ENABLE_VPC and specs.get('vpc'):
         specs['subnet-ids'] = str(specs['vpc']['subnet-ids']).split(',')
         specs['sec-group-ids'] = str(specs['vpc']['sec-group-ids']).split(',')

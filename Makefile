@@ -16,6 +16,8 @@ deploy-all:
 	.git/venv/bin/python deploy/aws/deploy_eventbridge.py
 	# .git/venv/bin/python deploy/aws/deploy_http_api.py
 
+deploy-iam:
+	.git/venv/bin/python deploy/aws/deploy_iam.py
 
 deploy-layer:
 	.git/venv/bin/python deploy/aws/deploy_lambdalayer.py
@@ -63,11 +65,11 @@ compile-and-upload:
 	rm -rdf python ||true
 	# Show CodeSha256
 	cat /tmp/layer.zip |sha256sum |cut -d' ' -f1 |xxd -r -p |base64
-	# aws s3 cp /tmp/layer.zip s3://${AWS_LAMBDA_BUCKET}/lambda/hellofunc1234/prod/layer_latest.zip --profile sam-dev
+	# aws s3 cp /tmp/layer.zip s3://${IAC_BUCKET}/lambda/hellofunc1234/prod/layer_latest.zip --profile sam-dev
 	rm -rdf python ||true
 	# UPLOAD CORE CODE
 	(cd services && zip -FSr /tmp/code.zip ./* -x *.pyc)
-	# aws s3 cp /tmp/code.zip s3://${AWS_LAMBDA_BUCKET}/lambda/hellofunc1234/prod/code_latest.zip --profile sam-dev
+	# aws s3 cp /tmp/code.zip s3://${IAC_BUCKET}/lambda/hellofunc1234/prod/code_latest.zip --profile sam-dev
 	# Show CodeSha256
 	cat /tmp/code.zip |sha256sum |cut -d' ' -f1 |xxd -r -p |base64
 	# rm /tmp/code.zip ||true

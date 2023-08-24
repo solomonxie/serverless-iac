@@ -14,7 +14,7 @@ from utils import rest_api_utils
 from utils import cloudwatch_utils
 
 logger = logging.getLogger(__name__)
-s3_client = s3_utils.S3Bucket(settings.AWS_LAMBDA_BUCKET)
+s3_client = s3_utils.S3Bucket(settings.IAC_BUCKET)
 
 TEMPLATE = common_utils.get_template()
 REPO_PATH = TEMPLATE['info']['repo_path']

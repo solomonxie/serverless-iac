@@ -13,7 +13,7 @@ from utils.common_utils import is_int
 from utils.common_utils import get_app_env_dict
 
 lambda_client = settings.lambda_client
-s3_client = S3Bucket(settings.AWS_LAMBDA_BUCKET)
+s3_client = S3Bucket(settings.IAC_BUCKET)
 logger = logging.getLogger(__name__)
 
 
@@ -181,7 +181,7 @@ def create_python_function(specs: dict) -> dict:
         'MemorySize': specs['mem'],
         'PackageType': 'Zip',
         'Code': {  # REQUIRED
-            'S3Bucket': settings.AWS_LAMBDA_BUCKET,
+            'S3Bucket': settings.IAC_BUCKET,
             'S3Key': specs['func_s3_key'],
         },
         'Tags': {
@@ -214,7 +214,7 @@ def update_python_function(specs: dict, publish: bool = True) -> dict:
     args = {
         'Publish': publish,  # FYI: IMPORTANT
         'FunctionName': specs['full_name'],
-        'S3Bucket': settings.AWS_LAMBDA_BUCKET,
+        'S3Bucket': settings.IAC_BUCKET,
         'S3Key': specs['func_s3_key'],
         'Architectures': [specs['arch']],
     }
