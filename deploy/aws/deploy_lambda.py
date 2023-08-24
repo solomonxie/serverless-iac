@@ -26,6 +26,7 @@ class LambdaDeployHelper:
         lambda_utils.upload_code_to_s3(self.repo_path, ignores)
 
     def deploy_functions(self):
+        __import__('pudb').set_trace()
         for specs in self.template['resources'].get('lambda') or []:
             specs = render_specs(specs)
             print('==>DEPLOYING LAMBDA {}'.format(specs['name']))
@@ -35,10 +36,10 @@ class LambdaDeployHelper:
             # CREATE FUNCTION
             if not specs['remote']:
                 assert 'python' in specs['runtime']  # TODO: SUPPORT MORE RUNTIMES
-                specs['remote'] = lambda_utils.create_python_function(specs)
+                specs['remote'] = lambda_utils.create_lambda_function(specs)
             else:
                 # lambda_utils.update_python_function(specs, False)  # OPTIONAL: UPDATE $LATEST FOR GUI DEBUG
-                specs['remote'] = lambda_utils.update_python_function(specs)
+                specs['remote'] = lambda_utils.update_lambda_function(specs)
                 specs['remote'] = lambda_utils.update_function_config(specs)
             # UPDATE ALIAS POINTING TO THE LATEST VERSION
             ver = specs.get('latest_version') or specs['remote'].get('Version') or '$LATEST'
@@ -49,6 +50,8 @@ class LambdaDeployHelper:
                 specs['alias_info'] = lambda_utils.update_func_alias(specs['name'], settings.FUNC_ALIAS, ver)
             specs['alias_arn'] = specs['alias_info']['AliasArn']
             specs['latest_version'] = specs['alias_info']['FunctionVersion']
+            # SET Unreserved CONCURRENCY
+            lambda_utils.set_lambda_concurrency(specs['name'], specs.get('concurrency'))
             # SET PROVISIONED CONCURRENCY (requires func-alias)
             if specs.get('preserve'):
                 lambda_utils.set_function_preservation(specs)

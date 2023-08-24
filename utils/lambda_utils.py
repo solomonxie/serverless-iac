@@ -159,7 +159,7 @@ def upload_code_to_s3(repo_path: str, ignores: list = None) -> str:
     return s3_key
 
 
-def create_python_function(specs: dict) -> dict:
+def create_lambda_function(specs: dict) -> dict:
     name = specs['name']
     print(f'CREATING LAMBDA [{name}]')
     args = {
@@ -198,7 +198,7 @@ def create_python_function(specs: dict) -> dict:
     return resp
 
 
-def update_python_function(specs: dict, publish: bool = True) -> dict:
+def update_lambda_function(specs: dict, publish: bool = True) -> dict:
     # ==> PUBLISH CODE (NON-BLOCKING)
     print('PUBLISHING NEW VERSION OF LAMBDA FOR: {}'.format(specs['name']))
     args = {
@@ -308,6 +308,15 @@ def remove_function_preservation(specs: dict) -> dict:
     waiter.wait(FunctionName=specs['name'], WaiterConfig={'Delay': 2, 'MaxAttempts': 30})
     print('OK: REMOVED PROVISIONED CONCURRENCY FOR LAMBDA [{}]'.format(specs['name']))
     return resp
+
+
+def set_lambda_concurrency(name: str, concurrency: int = None):
+    resp = lambda_client.put_function_concurrency(
+        FunctionName=name,
+        ReservedConcurrentExecutions=int(concurrency or 100),
+    )
+    resp.pop('ResponseMetadata', None)
+    return resp['ReservedConcurrentExecutions']
 
 
 def get_func_triggers(func_name: str) -> list:
