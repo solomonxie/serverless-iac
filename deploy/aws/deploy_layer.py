@@ -42,7 +42,7 @@ def render_specs(specs: dict, repo_path: str) -> dict:
     specs['runtime'] = specs['runtime']
     assert specs['arch'] in ['x86_64', 'arm64']
     specs['arn'] = layer_utils.get_layer_arn(specs['name'])
-    specs['path'] = os.path.join(repo_path, specs['manifest'])
+    specs['path'] = os.path.join(repo_path, specs['path'])
     specs['sha'] = file_to_sha(os.path.realpath(os.path.expanduser(specs['path'])))
     specs['layer_s3_key'] = layer_utils.get_layer_s3_key(specs['name'])
     specs['sha_s3_key'] = specs['layer_s3_key'] + '.sha'

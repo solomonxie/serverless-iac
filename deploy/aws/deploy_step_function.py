@@ -22,24 +22,35 @@ class StepFuncDeployHelper:
             ]):
                 print('SKIP DEPLOYMENT FOR STATE MACHINE [{}]'.format(specs['name']))
                 continue
-            specs = stepfunc_utils.render_specs(specs)
-            # DEPLOY LOG GROUP
-            if not specs['log_group_info']:
-                cloudwatch_utils.create_log_group(specs['log_group_name'])
-                specs['log_group_info'] = cloudwatch_utils.get_log_group(specs['log_group_name'])
-                specs['log_group_arn'] = specs['log_group_info'].get('arn')
-            # DEPLOY IAM/POLICY
-            iam_specs = {}
-            iam_utils.deploy_policy(specs['po_name'], specs['po_path'], **iam_specs)
-            iam_utils.deploy_role(specs['ro_name'], specs['po_name'], 'stepfunc')
-            print('DONE: DEPLOYED STEPFUNC IAM ROLE/POLICY FOR [{}]'.format(specs['name']))
-            # DEPLOY STATE MACHINE
+            specs = render_specs(specs)
             machine = specs.get('machine')
             if not machine:
                 specs['machine'] = stepfunc_utils.create_stepfunc(specs)
             else:
                 specs['machine'] = stepfunc_utils.update_stepfunc(machine['stateMachineArn'], specs)
+            # # DEPLOY LOG GROUP
+            # if not specs['log_group_info']:
+            #     cloudwatch_utils.create_log_group(specs['log_group_name'])
+            #     specs['log_group_info'] = cloudwatch_utils.get_log_group(specs['log_group_name'])
+            #     specs['log_group_arn'] = specs['log_group_info'].get('arn')
+            # print('DONE: DEPLOYED STEPFUNC IAM ROLE/POLICY FOR [{}]'.format(specs['name']))
+            # DEPLOY STATE MACHINE
         return
+
+
+def render_specs(specs: dict) -> dict:
+    specs['role-arn'] = iam_utils.get_role_arn_by_name(specs['role'])
+    with open(specs['path']) as f:
+        raw = f.read()
+    specs['definition'] = stepfunc_utils.render_state_machine_expression(raw)
+    specs['type'] = specs.get('type') or 'STANDARD'
+    # LIVE FETCH:
+    specs['machine'] = stepfunc_utils.get_state_machine_by_name(specs['name'])
+    specs['arn'] = specs['machine'].get('stateMachineArn')
+    # specs['log_group_name'] = cloudwatch_utils.get_stepfunc_log_group_name(specs['name'])
+    # specs['log_group_info'] = cloudwatch_utils.get_log_group(specs['log_group_name'])
+    # specs['log_group_arn'] = specs['log_group_info'].get('arn')
+    return specs
 
 
 def main():

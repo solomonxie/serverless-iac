@@ -91,8 +91,8 @@ def list_policy_versions(arn: str) -> list:
 def create_iam_role(ro_name: str, trust_entity: str, tags: dict) -> dict:
     service = {
         'lambda': 'lambda.amazonaws.com',
-        # 'stepfunc': 'states.amazonaws.com',
-        'stepfunc': ['states.amazonaws.com', 'apigateway.amazonaws.com'],
+        'stepfunc': 'states.amazonaws.com',
+        # 'stepfunc': ['states.amazonaws.com', 'apigateway.amazonaws.com'],
         'eventbridge': 'events.amazonaws.com',
     }[trust_entity]
     trust_policy = json.dumps({

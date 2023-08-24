@@ -19,16 +19,26 @@ def get_template() -> dict:
     assert os.path.exists(path), f'SWAWGGER FILE NOT EXISTS: {path}'
     template = render_yaml(path)
     template['info']['repo_path'] = repo_path
+    tags = {k: str(v) for k, v in template.get('tags', {}).items()}
     # MERGE LAMBDA DEFAULT
     lambda_default = template['services'].get('lambda') or {}
     for specs in template['resources'].get('lambda') or []:
         specs.update({k: v for k, v in lambda_default.items() if k not in specs})
         specs['env'] = {**lambda_default.get('env', {}), **specs.get('env', {})}
+        specs['tags'] = {**tags, **lambda_default.get('tags', {}), **specs.get('tags', {})}
+    for specs in template['services']['lambdalayer']:
+        specs['tags'] = {**tags, **specs.get('tags', {})}
     for specs in template['resources'].get('stepfunc') or []:
-        specs['definition-path'] = os.path.realpath(os.path.join(repo_path, specs['definition-path']))
+        specs['path'] = os.path.realpath(os.path.join(repo_path, specs['path']))
+        specs['tags'] = {**tags, **specs.get('tags', {})}
     for specs in template['resources'].get('schedule') or []:
         if specs.get('event-filter-path'):
             specs['event-filter-path'] = os.path.realpath(os.path.join(repo_path, specs['event-filter-path']))
+        specs['tags'] = {**tags, **specs.get('tags', {})}
+    for specs in template['services']['iam']['role']:
+        specs['tags'] = {**tags, **specs.get('tags', {})}
+    for specs in template['services']['iam']['policy']:
+        specs['tags'] = {**tags, **specs.get('tags', {})}
     return template
 
 
