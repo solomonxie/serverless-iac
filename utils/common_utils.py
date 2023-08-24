@@ -32,7 +32,7 @@ def get_template() -> dict:
 
 
 def get_name_prefix(resource: str = '') -> str:
-    prefix = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-'
+    prefix = f'{settings.STAGE_NAME}-{settings.APPLICATION_NAME}-'
     if resource:
         prefix += str(resource) + '-'
     return prefix
@@ -170,14 +170,3 @@ def is_int(s: str) -> bool:
     except Exception as e:
         logger.exception(e)
     return result
-
-
-def get_app_env_dict() -> dict:
-    envs = {
-        'X_STAGE_NAME': settings.STAGE_NAME,
-        'X_STAGE_SUBNAME': settings.STAGE_SUBNAME,
-        'X_APPLICATION_NAME': settings.APPLICATION_NAME,
-        'X_AWS_REGION': settings.AWS_REGION,
-        'X_AWS_ACCOUNT_ID': settings.AWS_ACCOUNT_ID,
-    }
-    return envs

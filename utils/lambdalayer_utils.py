@@ -6,7 +6,6 @@ import logging
 
 import settings
 from utils.s3_utils import S3Bucket
-from utils.common_utils import file_to_sha
 
 lambda_client = settings.lambda_client
 s3_client = S3Bucket(settings.IAC_BUCKET)
@@ -70,7 +69,7 @@ def build_layer_py_requirements(specs: dict) -> str:
 
 
 def create_python_package_layer(specs: dict):
-    layer_name = specs['full_name']
+    layer_name = specs['name']
     layer_s3_key = specs['layer_s3_key']
     print(f'CREATING LAYER: [{layer_name}]')
     args = {
@@ -98,7 +97,7 @@ def get_latest_layer_by_name(layer_name: str):
 
 
 def deploy_python_package_layer(specs: dict):
-    layer = get_latest_layer_by_name(specs['full_name'])
+    layer = get_latest_layer_by_name(specs['name'])
     if layer.get('LayerVersionArn'):
         version_arn = layer['LayerVersionArn']
         print(f'SKIP CREATE LAYER: ALREADY EXISTS: {version_arn}')
