@@ -6,7 +6,6 @@ FUNC_ALIAS = 'latest_release'
 
 TEAM_NAME = os.environ.get('TEAM_NAME')
 STAGE_NAME = os.environ.get('STAGE_NAME')
-# STAGE_SUBNAME = os.environ.get('STAGE_SUBNAME')
 BUILD_NO = os.environ.get('BUILD_NO')
 APPLICATION_NAME = os.environ.get('APPLICATION_NAME') or ''
 REPO_URL = os.environ.get('REPO_URL')
@@ -70,7 +69,6 @@ s3_resource = ses.resource('s3', config=BOTO_CONFIG)
 DESCRIPTION = (
     "SCOPE==> "
     f"STAGE: [{STAGE_NAME}]; "
-    # f"SUB: [{STAGE_SUBNAME}]; "
     f"BUILD: [{BUILD_NO}]; "
     f"APP: [{APPLICATION_NAME}]; "
     f"VPC: [{ENABLE_VPC}]; "

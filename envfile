@@ -1,7 +1,6 @@
 BUILD_NO=000
 APPLICATION_NAME=abc
 STAGE_NAME=prod
-STAGE_SUBNAME=green
 REPO_URL=https://github.com/xxx/code.git
 #LOCAL_REPO_PATH=~/workspace/repos/lambda-application-demo
 DEPLOY_TYPE=full

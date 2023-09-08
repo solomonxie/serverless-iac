@@ -41,7 +41,7 @@ def render_swagger(path: str, specs: dict) -> dict:
 
 
 def get_api_full_name(name: str):
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-restapi-{name}'
+    full_name = f'apigw-{settings.APPLICATION_NAME}-{settings.STAGE_NAME}-{name}'
     return full_name
 
 

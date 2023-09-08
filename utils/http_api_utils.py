@@ -82,7 +82,7 @@ def get_api_integrations(api_id: str) -> dict:
 
 
 def get_api_full_name(name: str):
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-httpapi-{name}'
+    full_name = f'apigw-{settings.APPLICATION_NAME}-{settings.STAGE_NAME}-{name}'
     return full_name
 
 

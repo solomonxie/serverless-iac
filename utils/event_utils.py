@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_rule_full_name(name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-schedule-{name}'
+    full_name = f'eventbridgerule-{settings.APPLICATION_NAME}-{settings.STAGE_NAME}-{name}'
     return full_name
 
 
