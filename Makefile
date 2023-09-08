@@ -13,7 +13,7 @@ deploy-all:
 	.git/venv/bin/python deploy/aws/deploy_lambda.py
 	.git/venv/bin/python deploy/aws/deploy_rest_api.py
 	.git/venv/bin/python deploy/aws/deploy_step_function.py
-	.git/venv/bin/python deploy/aws/deploy_eventbridge.py
+	.git/venv/bin/python deploy/aws/deploy_schedule.py
 	# .git/venv/bin/python deploy/aws/deploy_http_api.py
 
 deploy-iam:
@@ -34,8 +34,8 @@ deploy-rest-api:
 deploy-http-api:
 	.git/venv/bin/python deploy/aws/deploy_http_api.py
 
-deploy-event:
-	.git/venv/bin/python deploy/aws/deploy_eventbridge.py
+deploy-schedule:
+	.git/venv/bin/python deploy/aws/deploy_schedule.py
 
 destroy:
 	.git/venv/bin/python deploy/aws/destroy_app.py
