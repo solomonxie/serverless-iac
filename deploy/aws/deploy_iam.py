@@ -28,7 +28,9 @@ class IAMDeployHelper:
         for specs in self.template['resources'].get('iam', {}).get('role') or []:
             specs = render_role_specs(specs)
             print('==>DEPLOYING ROLE {}'.format(specs['name']))
-            iam_utils.deploy_role(specs['name'], specs['trust-entity'], specs.get('tags'))
+            trust_path = os.path.join(self.repo_path, specs['trust-policy-path'])
+            trust_po = open(trust_path).read()
+            iam_utils.deploy_role(specs['name'], trust_po, specs.get('tags'))
             for po_name in specs.get('policies') or []:
                 iam_utils.attach_policy_to_role(specs['name'], po_name)
 

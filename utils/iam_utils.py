@@ -88,27 +88,13 @@ def list_policy_versions(arn: str) -> list:
     return versions
 
 
-def create_iam_role(ro_name: str, trust_entity: str, tags: dict) -> dict:
-    service = {
-        'lambda': 'lambda.amazonaws.com',
-        'stepfunc': 'states.amazonaws.com',
-        # 'stepfunc': ['states.amazonaws.com', 'apigateway.amazonaws.com'],
-        'eventbridge': 'events.amazonaws.com',
-    }[trust_entity]
-    trust_policy = json.dumps({
-        "Version": "2012-10-17",
-        "Statement": [{
-            "Effect": "Allow",
-            "Principal": {"Service": service},
-            "Action": "sts:AssumeRole",
-        }]
-    })
+def create_iam_role(ro_name: str, trust_policy: str, tags: dict) -> dict:
     tag_list = [{'Key': k, 'Value': v} for k, v in (tags or {}).items()]
     response = iam_client.create_role(
         RoleName=ro_name,  # REQUIRED
         AssumeRolePolicyDocument=trust_policy,  # REQUIRED
         Tags=tag_list,
-        Description=f'{ro_name}: {trust_entity}',
+        Description=ro_name,
         MaxSessionDuration=3600,
     )
     ro = response['Role']
@@ -155,9 +141,9 @@ def update_iam_policy(arn, doc_content):
     return po
 
 
-def deploy_policy(po_name: str, path: str, tags: dict, **iam_specs) -> dict:
+def deploy_policy(po_name: str, po_path: str, tags: dict, **iam_specs) -> dict:
     assert len(po_name) <= 64, f'POLICY NAME SHOULD BE LESS THAN 64: {po_name}'
-    po_path = os.path.realpath(os.path.expanduser(path))
+    po_path = os.path.realpath(os.path.expanduser(po_path))
     po_arn = get_policy_arn_by_name(po_name)
     po_content = json.dumps(common_utils.render_json(po_path, **iam_specs))
     po = get_iam_policy(po_arn) or {}
@@ -171,11 +157,11 @@ def deploy_policy(po_name: str, path: str, tags: dict, **iam_specs) -> dict:
     return po
 
 
-def deploy_role(ro_name: str, trust_entity: str, tags: dict) -> dict:
+def deploy_role(ro_name: str, trust_policy: str, tags: dict) -> dict:
     assert len(ro_name) <= 64, f'ROLE NAME SHOULD BE LESS THAN 64: {ro_name}'
     ro = get_iam_role(ro_name)
     if not ro:
-        ro = create_iam_role(ro_name, trust_entity, tags)
+        ro = create_iam_role(ro_name, trust_policy, tags)
         waiter = iam_client.get_waiter('role_exists')
         waiter.wait(RoleName=ro_name, WaiterConfig={'Delay': 2, 'MaxAttempts': 30})
     else:
