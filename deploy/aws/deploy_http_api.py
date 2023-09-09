@@ -16,12 +16,12 @@ class DeployHelper:
         repo_path = self.template['info']['repo_path']
         swagger_path = os.path.realpath(os.path.join(
             os.path.expanduser(repo_path),
-            self.template['services']['http-api']['swagger-path']
+            self.template['resources']['http-api']['swagger-path']
         ))
         self.swagger = common_utils.render_yaml(swagger_path)
         self.route_map = common_utils.parse_swagger_route_map(self.swagger['paths'])
         self.api_id = None
-        self.api_name = self.template['services']['http-api']['name']
+        self.api_name = self.template['resources']['http-api']['name']
         self.api_full_name = http_api_utils.get_api_full_name(self.api_name)
 
     def deploy(self):
@@ -38,10 +38,10 @@ class DeployHelper:
         print('OK')
 
     def deploy_api(self):
-        if not self.template['services'].get('http-api'):
+        if not self.template['resources'].get('http-api'):
             print('SKIP DEPLOYMENT OF HTTP API FOR NOT FOUND DEFINITION')
             return
-        specs = self.template['services']['http-api']
+        specs = self.template['resources']['http-api']
         api = http_api_utils.get_api_by_name(self.api_full_name)
         if not api:
             api = http_api_utils.create_api(self.api_full_name)

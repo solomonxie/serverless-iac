@@ -22,7 +22,7 @@ class LambdaDeployHelper:
         print('[ OK ]')
 
     def upload_code(self):
-        ignores = self.template['services']['lambda'].get('upload-ignore') or []
+        ignores = self.template['default']['lambda'].get('upload-ignore') or []
         lambda_utils.upload_code_to_s3(self.repo_path, ignores)
 
     def deploy_functions(self):

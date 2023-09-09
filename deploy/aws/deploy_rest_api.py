@@ -11,20 +11,20 @@ logger = logging.getLogger(__name__)
 class RestApiDeployHelper:
     def __init__(self):
         self.template = common_utils.get_template()
-        if not self.template['services'].get('rest-api'):
+        if not self.template['resources'].get('rest-api'):
             return
         repo_path = self.template['info']['repo_path']
         swagger_path = os.path.realpath(os.path.join(
             os.path.expanduser(repo_path),
-            self.template['services']['rest-api']['swagger-path']
+            self.template['resources']['rest-api']['swagger-path']
         ))
-        self.specs = rest_api_utils.render_specs(self.template['services']['rest-api'])
+        self.specs = rest_api_utils.render_specs(self.template['resources']['rest-api'])
         self.swagger = rest_api_utils.render_swagger(swagger_path, self.specs)
         remote = rest_api_utils.get_api_by_name(self.specs['full-name'])
         self.api_id = remote.get('id')
 
     def deploy(self):
-        if not self.template['services'].get('rest-api'):
+        if not self.template['resources'].get('rest-api'):
             print('SKIP DEPLOYMENT OF REST API FOR NOT FOUND DEFINITION')
             return
         if self.specs.get('no-deploy') is True:

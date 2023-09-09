@@ -1,10 +1,13 @@
 BUILD_NO=000
 APPLICATION_NAME=abc
 STAGE_NAME=prod
+
 REPO_URL=https://github.com/xxx/code.git
 #LOCAL_REPO_PATH=~/workspace/repos/lambda-application-demo
+TEMPLATE_PATH=definitions/template-udp-p.yaml
 DEPLOY_TYPE=full
 DEPLOY_TARGET=
+
 ENABLE_XRAY=true
 ENABLE_LAMBDA_CONFIG_UPDATE=true
 

@@ -38,7 +38,7 @@ class CleanUp:
         return
 
     def delete_http_api(self):
-        full_name = http_api_utils.get_api_full_name(self.template['services']['http-api']['name'])
+        full_name = http_api_utils.get_api_full_name(self.template['resources']['http-api']['name'])
         api = http_api_utils.get_api_by_name(full_name)
         if api:
             api_id = api['ApiId']
@@ -49,7 +49,7 @@ class CleanUp:
         return
 
     def delete_rest_api(self):
-        full_name = rest_api_utils.get_api_full_name(self.template['services']['rest-api']['name'])
+        full_name = rest_api_utils.get_api_full_name(self.template['resources']['rest-api']['name'])
         api = rest_api_utils.get_api_by_name(full_name)
         if api:
             api_id = api['ApiId']

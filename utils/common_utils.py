@@ -15,29 +15,34 @@ logger = logging.getLogger(__name__)
 def get_template() -> dict:
     repo_path = settings.LOCAL_REPO_PATH or download_application_code()
     repo_path = os.path.realpath(os.path.expanduser(repo_path))
-    path = os.path.join(repo_path, 'definitions/', settings.TEMPLATE_NAME)
+    path = os.path.join(repo_path, settings.TEMPLATE_PATH)
     assert os.path.exists(path), f'SWAWGGER FILE NOT EXISTS: {path}'
     template = render_yaml(path)
     template['info']['repo_path'] = repo_path
     tags = {k: str(v) for k, v in template.get('tags', {}).items()}
-    # MERGE LAMBDA DEFAULT
-    lambda_default = template['services'].get('lambda') or {}
+    # Lambda
+    lambda_default = template['default'].get('lambda') or {}
     for specs in template['resources'].get('lambda') or []:
         specs.update({k: v for k, v in lambda_default.items() if k not in specs})
         specs['env'] = {**lambda_default.get('env', {}), **specs.get('env', {})}
         specs['tags'] = {**tags, **lambda_default.get('tags', {}), **specs.get('tags', {})}
-    for specs in template['services']['lambdalayer']:
+    for specs in template['resources']['lambdalayer']:
         specs['tags'] = {**tags, **specs.get('tags', {})}
+    # Stepfunc
     for specs in template['resources'].get('stepfunc') or []:
         specs['path'] = os.path.realpath(os.path.join(repo_path, specs['path']))
         specs['tags'] = {**tags, **specs.get('tags', {})}
+    # Eventbridge
     for specs in template['resources'].get('schedule') or []:
         if specs.get('event-filter-path'):
             specs['event-filter-path'] = os.path.realpath(os.path.join(repo_path, specs['event-filter-path']))
         specs['tags'] = {**tags, **specs.get('tags', {})}
-    for specs in template['services']['iam']['role']:
+    for specs in template['resources'].get('rule') or []:
         specs['tags'] = {**tags, **specs.get('tags', {})}
-    for specs in template['services']['iam']['policy']:
+    # IAM
+    for specs in template['resources']['iam']['role']:
+        specs['tags'] = {**tags, **specs.get('tags', {})}
+    for specs in template['resources']['iam']['policy']:
         specs['tags'] = {**tags, **specs.get('tags', {})}
     return template
 

@@ -30,7 +30,7 @@ PO_NAME = 'lambda-general'
 
 def prepare_template() -> dict:
     template = deepcopy(TEMPLATE)
-    for service, specs in (template.get('services') or {}).items():
+    for service, specs in (template.get('default') or {}).items():
         if service == 'http-api':
             specs = prepare_http_api(specs)
         elif service == 'rest-api':

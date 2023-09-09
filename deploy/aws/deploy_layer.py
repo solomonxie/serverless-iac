@@ -19,7 +19,7 @@ class LambdaLayerDeployHelper:
         print('[ OK ]')
 
     def deploy_layers(self):
-        for specs in self.template['services'].get('lambdalayer') or []:
+        for specs in self.template['resources'].get('lambdalayer') or []:
             specs = render_specs(specs, self.repo_path)
             print('==>DEPLOYING LAMBDA LAYER {}'.format(specs['name']))
             if specs['type'] == 'nodejs_packages':
@@ -33,7 +33,7 @@ class LambdaLayerDeployHelper:
         return
 
     def clear(self):
-        for specs in self.template['services'].get('lambdalayer') or []:
+        for specs in self.template['resources'].get('lambdalayer') or []:
             layer_utils.clean_layer_old_versions(specs['name'])
 
 

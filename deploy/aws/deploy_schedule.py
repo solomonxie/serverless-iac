@@ -17,36 +17,24 @@ class ScheduleDeployHelper:
         self.template = common_utils.get_template()
 
     def deploy(self):
+        __import__('pudb').set_trace()
         for specs in self.template['resources'].get('schedule') or []:
             if specs.get('no-deploy') is True:
                 print('SKIP DEPLOYMENT FOR SCHEDULE [{}]'.format(specs['name']))
                 continue
-            specs = event_utils.render_specs(specs)
-            event_utils.set_event_schedule(specs['name'], specs['cron'], role_arn=specs['ro-arn'])
-            event_utils.set_target(specs['rule-name'], specs['target-arn'], role_arn=specs['ro-arn'])
+            specs = render_specs(specs)
+            event_utils.set_event_schedule(specs)
+            event_utils.set_target(specs)
         return
 
 
 def render_specs(specs: dict) -> dict:
     specs['rule-name'] = event_utils.get_rule_full_name(specs['name'])
-    if specs.get('cron'):
-        specs['event-type'] = 'cron'
-    elif specs.get('event-filter-path'):
-        specs['event-type'] = 'event-filter'
-        specs['filter'] = json.dumps(common_utils.render_json(specs['event-filter-path']))
-    else:
-        raise NotImplementedError('PLEASE SPECIFY EVENT TYPE')
+    specs['role-arn'] = iam_utils.get_role_arn_by_name(specs['role'])
     if specs['target-type'] == 'lambda':
-        func_name = lambda_utils.get_func_full_name(specs['target-name'])
-        specs['target-arn'] = lambda_utils.get_func_arn_by_name(func_name)
-        specs['ro-arn'] = ''
+        specs['target-arn'] = lambda_utils.get_func_arn_by_name(specs['target-name'])
     elif specs['target-type'] == 'stepfunc':
-        sfn_name = stepfunc_utils.get_stepfunc_full_name(specs['target-name'])
-        specs['target-arn'] = stepfunc_utils.get_stepfunc_arn_by_name(sfn_name)
-        specs['ro-name'] = iam_utils.get_role_full_name('event-' + specs['name'])
-        specs['ro-arn'] = iam_utils.get_role_arn_by_name(specs['ro-name'])
-        specs['po-name'] = iam_utils.get_policy_full_name('event-' + specs['name'])
-        specs['po-path'] = './iam/iam-policy-eventbridge-call-stepfunc.json'
+        specs['target-arn'] = stepfunc_utils.get_stepfunc_arn_by_name(specs['target-name'])
     else:
         raise NotImplementedError('TARGET TYPE [{}] SUPPORTED'.format(specs.get('target-type')))
     # SKIP DEPLOY

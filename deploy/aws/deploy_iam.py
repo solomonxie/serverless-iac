@@ -18,14 +18,14 @@ class IAMDeployHelper:
         print('[ OK ]')
 
     def deploy_policies(self):
-        for specs in self.template['services'].get('iam', {}).get('policy') or []:
+        for specs in self.template['resources'].get('iam', {}).get('policy') or []:
             specs = render_policy_specs(specs)
             print('==>DEPLOYING POLICY {}'.format(specs['name']))
             path = os.path.join(self.repo_path, specs['path'])
             iam_utils.deploy_policy(specs['name'], path, specs.get('tags'))
 
     def deploy_roles(self):
-        for specs in self.template['services'].get('iam', {}).get('role') or []:
+        for specs in self.template['resources'].get('iam', {}).get('role') or []:
             specs = render_role_specs(specs)
             print('==>DEPLOYING ROLE {}'.format(specs['name']))
             iam_utils.deploy_role(specs['name'], specs['trust-entity'], specs.get('tags'))

@@ -10,7 +10,7 @@ BUILD_NO = os.environ.get('BUILD_NO')
 APPLICATION_NAME = os.environ.get('APPLICATION_NAME') or ''
 REPO_URL = os.environ.get('REPO_URL')
 LOCAL_REPO_PATH = os.environ.get('LOCAL_REPO_PATH')
-TEMPLATE_NAME = os.getenv('TEMPLATE_NAME')
+TEMPLATE_PATH = os.getenv('TEMPLATE_PATH')
 
 LAMBDA_MAX_VERSION = 5  # PREVENT FROM LAMBDA QUOTA CONSUMTION
 DEPLOY_TYPE = os.environ.get('DEPLOY_TYPE') or 'full'  # full | lambda | layer | httpapi | restapi | stepfunc | schedule

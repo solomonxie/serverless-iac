@@ -37,6 +37,9 @@ deploy-http-api:
 deploy-schedule:
 	.git/venv/bin/python deploy/aws/deploy_schedule.py
 
+deploy-rule:
+	.git/venv/bin/python deploy/aws/deploy_eventrule.py
+
 destroy:
 	.git/venv/bin/python deploy/aws/destroy_app.py
 
