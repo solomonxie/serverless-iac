@@ -7,7 +7,7 @@ import yaml
 import logging
 
 import settings
-from utils import common_utils
+from aws.utils import common_utils
 
 rest_client = settings.rest_client
 logger = logging.getLogger(__name__)
@@ -34,14 +34,16 @@ def render_swagger(path: str, specs: dict) -> dict:
         if info.get('account'):
             raw = raw.replace(info['account'], settings.AWS_ACCOUNT_ID)
     swagger = yaml.safe_load(raw)
-    api_name = get_api_full_name(specs['name'])
-    swagger['info']['title'] = api_name
+    assert ' ' not in specs['name']
+    swagger['info'] = {'title': get_api_full_name(specs['name'].lower())}
     swagger.pop('host', None)
     return swagger
 
 
-def get_api_full_name(name: str):
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-restapi-{name}'
+def get_api_full_name(short_name: str):
+    prefix = f'{settings.APPLICATION_NAME}-{settings.STAGE_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     return full_name
 
 
@@ -116,7 +118,10 @@ def create_api(api_name: str, info: dict) -> dict:
             'appliation/gzip',
             'image/*',
         ],
-        'tags': {'app_name': settings.APPLICATION_NAME},
+        'tags': {
+            'app_name': settings.APPLICATION_NAME,
+            'stage': f'{settings.STAGE_NAME}',
+        },
     }
     if settings.ENABLE_VPC:
         args['endpointConfiguration']['vpcEndpointIds'] = str(info['vpc-endpoint-ids']).split(',')
@@ -204,6 +209,7 @@ def integrate_api_with_stepfunc(*args, **kwargs):
 
 
 def integrate_api_with_s3(api_id: str, route_id: str, method: str, *args, **kwargs):
+    func_arn = ''  # FIXME
     uri = f'arn:aws:apigateway:{settings.AWS_REGION}:lambda:path/2015-03-31/functions/{func_arn}/invocations'
     args = {
         'restApiId': api_id,

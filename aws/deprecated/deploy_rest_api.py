@@ -1,5 +1,5 @@
-import os
 import logging
+from pathlib import Path
 
 from utils import common_utils
 from utils import lambda_utils
@@ -16,10 +16,7 @@ class RestApiDeployHelper:
         if not self.template['services'].get('rest-api'):
             return
         repo_path = self.template['info']['repo_path']
-        swagger_path = os.path.realpath(os.path.join(
-            os.path.expanduser(repo_path),
-            self.template['services']['rest-api']['swagger-path']
-        ))
+        swagger_path = str(Path(repo_path).expanduser() / self.template['services']['rest-api']['swagger-path'])
         self.swagger = common_utils.render_yaml(swagger_path)
         self.route_map = common_utils.parse_swagger_route_map(self.swagger['paths'])
         self.api_id = None

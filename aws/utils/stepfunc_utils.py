@@ -6,10 +6,10 @@ import re
 import logging
 
 import settings
-from utils import iam_utils
-from utils import lambda_utils
-from utils import common_utils
-from utils import cloudwatch_utils
+from aws.utils import iam_utils
+from aws.utils import lambda_utils
+from aws.utils import common_utils
+from aws.utils import cloudwatch_utils
 
 sfn_client = settings.sfn_client
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ def render_specs(specs: dict) -> dict:
     specs['ro_name'] = iam_utils.get_role_full_name('ro-' + specs['name'])
     specs['role_arn'] = iam_utils.get_role_arn_by_name(specs['ro_name'])
     specs['po_name'] = iam_utils.get_policy_full_name('stepfunc-general')
-    specs['po_path'] = specs.get('policy-path') or './iam/iam-policy-stepfunc-execution.json'
+    specs['po_path'] = specs.get('policy-path') or './aws/iam/iam-policy-stepfunc-execution.json'
     specs['full_name'] = get_stepfunc_full_name(specs['name'])
     with open(specs['definition-path']) as f:
         raw = f.read()
@@ -34,7 +34,9 @@ def render_specs(specs: dict) -> dict:
 
 
 def get_stepfunc_full_name(short_name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-stepfunc-{short_name}'
+    prefix = f'{settings.STAGE_NAME}-{settings.APPLICATION_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     return full_name
 
 
@@ -117,6 +119,7 @@ def create_stepfunc(specs: dict) -> dict:
         },
         'tags': [
             {'key': 'app_name', 'value': settings.APPLICATION_NAME},
+            {'key': 'stage', 'value': f'{settings.STAGE_NAME}'},
         ],
     }
     if settings.ENABLE_XRAY:

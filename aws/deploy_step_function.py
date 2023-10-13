@@ -1,10 +1,10 @@
 import logging
 
 import settings
-from utils import iam_utils
-from utils import common_utils
-from utils import stepfunc_utils
-from utils import cloudwatch_utils
+from aws.utils import iam_utils
+from aws.utils import common_utils
+from aws.utils import stepfunc_utils
+from aws.utils import cloudwatch_utils
 
 logger = logging.getLogger(__name__)
 

@@ -1,0 +1,157 @@
+swagger: "2.0"
+
+info:
+  title: ${APPLICATION_NAME}
+  description: Description in Markdown.
+  version: 1.0.0
+
+# host: "lezewwryee.execute-api.us-east-1.amazonaws.com"
+# basePath: "/prod"
+# schemes:
+# - "https"
+
+paths:
+  /fetch:
+    post:
+      produces:
+      - "application/json"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/Empty"
+      x-amazon-apigateway-integration:
+        credentials: "arn:aws:iam::087528170461:role/prod-green-xiaoboxie-bulk-delivery-role-invoke-stepfunc"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:us-east-1:states:action/DescribeExecution"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        type: "aws"
+  /lambda:
+    get:
+      produces:
+      - "application/json"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/Empty"
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:087528170461:function:prod-green-xiaoboxie-bulk-delivery-lambda-launch_task/invocations"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        contentHandling: "CONVERT_TO_TEXT"
+        type: "aws"
+  /launch:
+    post:
+      produces:
+      - "application/json"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/Empty"
+      x-amazon-apigateway-integration:
+        credentials: "arn:aws:iam::087528170461:role/prod-green-xiaoboxie-bulk-delivery-role-invoke-stepfunc"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:us-east-1:states:action/StartExecution"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        type: "aws"
+  /sync:
+    post:
+      produces:
+      - "application/json"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/Empty"
+      x-amazon-apigateway-integration:
+        credentials: "arn:aws:iam::087528170461:role/prod-green-xiaoboxie-bulk-delivery-role-invoke-stepfunc"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:us-east-1:states:action/StartSyncExecution"
+        responses:
+          default:
+            statusCode: "200"
+        passthroughBehavior: "when_no_match"
+        type: "aws"
+  /upload:
+    put:
+      consumes:
+      - "image/jpeg"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "k"
+        in: "query"
+        required: true
+        type: "string"
+      - in: "body"
+        name: "Empty"
+        required: true
+        schema:
+          $ref: "#/definitions/Empty"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/Empty"
+      x-amazon-apigateway-integration:
+        credentials: "arn:aws:iam::087528170461:role/xiaoboxie-role-api-gateway-upload-to-s3"
+        httpMethod: "PUT"
+        uri: "arn:aws:apigateway:us-east-1:s3:path/xiaoboxie-poc/upload-from-apigateway/{s3_key}"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.path.s3_key: "method.request.querystring.k"
+        passthroughBehavior: "when_no_match"
+        type: "aws"
+  /{folder}/{object}:
+    put:
+      produces:
+      - "application/json"
+      parameters:
+      - name: "object"
+        in: "path"
+        required: true
+        type: "string"
+      - name: "folder"
+        in: "path"
+        required: true
+        type: "string"
+      responses:
+        "200":
+          description: "200 response"
+          schema:
+            $ref: "#/definitions/Empty"
+      x-amazon-apigateway-integration:
+        credentials: "arn:aws:iam::087528170461:role/xiaoboxie-role-api-gateway-upload-to-s3"
+        httpMethod: "PUT"
+        uri: "arn:aws:apigateway:us-east-1:s3:path/{bucket}/{key}"
+        responses:
+          default:
+            statusCode: "200"
+        requestParameters:
+          integration.request.path.key: "method.request.path.object"
+          integration.request.path.bucket: "method.request.path.folder"
+        passthroughBehavior: "when_no_match"
+        type: "aws"
+
+definitions:
+  Empty:
+    type: "object"
+    title: "Empty Schema"
+
+x-amazon-apigateway-binary-media-types:
+- "*/*"
+- "image/jpeg"
+- "image/png"

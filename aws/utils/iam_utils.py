@@ -7,20 +7,24 @@ import logging
 import time
 
 import settings
-from utils import common_utils
+from aws.utils import common_utils
 from settings import iam_client
 
 logger = logging.getLogger(__name__)
 
 
 def get_role_full_name(short_name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-role-{short_name}'
+    prefix = f'role-{settings.APPLICATION_NAME}-{settings.STAGE_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     assert len(full_name) <= 64, f'ROLE NAME SHOULD BE LESS THAN 64: {full_name}'
     return full_name
 
 
 def get_policy_full_name(short_name: str) -> str:
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-policy-{short_name}'
+    prefix = f'policy-{settings.APPLICATION_NAME}-{settings.STAGE_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     assert len(full_name) <= 64, f'POLICY NAME SHOULD BE LESS THAN 64: {full_name}'
     return full_name
 

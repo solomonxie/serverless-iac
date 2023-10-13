@@ -5,6 +5,7 @@ import json
 import yaml
 import hashlib
 import logging
+from pathlib import Path
 from copy import deepcopy
 from collections import OrderedDict
 
@@ -13,26 +14,37 @@ logger = logging.getLogger(__name__)
 
 
 def get_template() -> dict:
-    repo_path = settings.LOCAL_REPO_PATH or download_application_code()
-    repo_path = os.path.realpath(os.path.expanduser(repo_path))
-    path = os.path.join(repo_path, 'definitions/template.yaml')
-    assert os.path.exists(path), f'SWAWGGER FILE NOT EXISTS: {path}'
-    template = render_yaml(path)
+    path = settings.LOCAL_REPO_PATH or download_application_code()
+    repo = Path(os.path.expanduser(path))
+    repo_path = str(repo)
+    template_path = repo / f'definitions/template-{settings.STAGE_NAME}.yaml'
+    if not template_path.exists():
+        template_path = repo / 'definitions/template.yaml'
+    assert template_path.exists(), f'SWAWGGER FILE NOT EXISTS: {template_path}'
+    template = render_yaml(str(template_path))
     template['info']['repo_path'] = repo_path
     # MERGE LAMBDA DEFAULT
     lambda_default = template['services'].get('lambda') or {}
     for specs in template['resources'].get('lambda') or []:
         specs.update({k: v for k, v in lambda_default.items() if k not in specs})
+        specs['env'] = {**(lambda_default.get('env') or {}), **(specs.get('env') or {})}
+        specs['repo_path'] = str(repo)
+        for layer_specs in specs.get('layers') or []:
+            layer_specs.update({
+                'runtime': specs['runtime'], 'arch': specs['arch'],
+                'repo_path': repo_path,
+                'manifest_path': str(repo / layer_specs['manifest']),
+            })
     for specs in template['resources'].get('stepfunc') or []:
-        specs['definition-path'] = os.path.realpath(os.path.join(repo_path, specs['definition-path']))
+        specs['definition-path'] = str(repo / specs['definition-path'])
     for specs in template['resources'].get('schedule') or []:
         if specs.get('event-filter-path'):
-            specs['event-filter-path'] = os.path.realpath(os.path.join(repo_path, specs['event-filter-path']))
+            specs['event-filter-path'] = str(repo / specs['event-filter-path'])
     return template
 
 
 def get_name_prefix(resource: str = '') -> str:
-    prefix = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-'
+    prefix = f'{settings.STAGE_NAME}-{settings.APPLICATION_NAME}-'
     if resource:
         prefix += str(resource) + '-'
     return prefix
@@ -58,7 +70,7 @@ def parse_swagger_route_map(definitions: dict):
     route_map = {}
     for route, methods in definitions.items():
         for method, info in methods.items():
-            route_key = ' '.join([method.upper(), route])
+            route_key = (method.upper(), route)
             info.update({
                 'method': method.upper(), 'route': route, 'route_key': route_key,
                 'auth': info.get('x-api-authorizer') or {},
@@ -170,14 +182,3 @@ def is_int(s: str) -> bool:
     except Exception as e:
         logger.exception(e)
     return result
-
-
-def get_app_env_dict() -> dict:
-    envs = {
-        'X_STAGE_NAME': settings.STAGE_NAME,
-        'X_STAGE_SUBNAME': settings.STAGE_SUBNAME,
-        'X_APPLICATION_NAME': settings.APPLICATION_NAME,
-        'X_AWS_REGION': settings.AWS_REGION,
-        'X_AWS_ACCOUNT_ID': settings.AWS_ACCOUNT_ID,
-    }
-    return envs

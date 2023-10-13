@@ -81,8 +81,10 @@ def get_api_integrations(api_id: str) -> dict:
     return itg_map
 
 
-def get_api_full_name(name: str):
-    full_name = f'{settings.STAGE_NAME}-{settings.STAGE_SUBNAME}-{settings.APPLICATION_NAME}-httpapi-{name}'
+def get_api_full_name(short_name: str):
+    prefix = f'{settings.APPLICATION_NAME}-{settings.STAGE_NAME}'
+    short_name = short_name.replace(prefix, '')
+    full_name = f'{prefix}-{short_name}'
     return full_name
 
 
@@ -193,6 +195,7 @@ def create_api_stage(api_id: str, stage_name: str, log_group_arn: str, throttlin
 def get_route_throttling_by_route_map(route_map: dict) -> dict:
     t = {}
     for route_key, info in route_map.items():
+        route_key = ' '.join(route_key)
         throttling = info.get('x-throttling') or {}
         rate = min(9000, throttling.get('rate-limit') or 20)
         burst = min(4000, throttling.get('burst-limit') or 10)

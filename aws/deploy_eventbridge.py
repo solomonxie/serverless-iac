@@ -1,8 +1,8 @@
 import logging
 
-from utils import iam_utils
-from utils import event_utils
-from utils import common_utils
+from aws.utils import iam_utils
+from aws.utils import event_utils
+from aws.utils import common_utils
 
 logger = logging.getLogger(__name__)
 

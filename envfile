@@ -1,20 +1,28 @@
+# Variables for this job only:
 BUILD_NO=000
-APPLICATION_NAME=abc
-STAGE_NAME=prod
-STAGE_SUBNAME=green
 REPO_URL=https://github.com/xxx/code.git
 #LOCAL_REPO_PATH=~/workspace/repos/lambda-application-demo
 DEPLOY_TYPE=full
 DEPLOY_TARGET=
 ENABLE_XRAY=true
+ENABLE_VPC=false
 ENABLE_LAMBDA_CONFIG_UPDATE=true
 
-AWS_IAM_PROFILE_NAME=abc
-AWS_REGION=us-east-1
-AWS_ACCOUNT_ID=123
-AWS_LAMBDA_BUCKET=xxx
-AWS_LAMBDA_LOGGING_ROLE=xxx
+# Variables ingested by template.yaml and Lambda:
+X_APPLICATION_NAME=abc
+X_STAGE_NAME=p
+X_AWS_REGION=us-east-1
+X_AWS_ACCOUNT_ID=123
+X_AWS_LAMBDA_BUCKET=xxx
+X_AWS_VPC_IDS=xxx,xxx
+X_AWS_VPCE_IDS=xxx,xxx
+X_AWS_VPC_SUBNET_IDS=aaa,bbb,ccc
+X_AWS_VPC_SECGROUP_IDS=aaa,bbb,ccc
 
-AWS_VPC_IDS=xxx
-AWS_VPC_SUBNET_IDS=aaa,bbb,ccc
-AWS_VPC_SEC_GROUP_IDS=aaa,bbb,ccc
+
+# AWS ENV FOR RUNNING FRAMEWORK
+AWS_ACCOUNT_ID=xxxx
+AWS_ACCESS_KEY_ID=xxx
+AWS_SECRET_ACCESS_KEY=xxx
+AWS_ACCOUNT_ID=xxx
+AWS_DEFAULT_REGION=us-east-1
